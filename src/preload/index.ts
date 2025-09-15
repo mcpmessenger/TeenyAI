@@ -17,6 +17,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Navigation
   navigateTo: (url: string) => ipcRenderer.invoke('navigate-to', url),
+  getCurrentUrl: () => ipcRenderer.invoke('get-current-url'),
+  goBack: () => ipcRenderer.invoke('go-back'),
+  goForward: () => ipcRenderer.invoke('go-forward'),
+  reload: () => ipcRenderer.invoke('reload'),
   
   // Event listeners
   onElementHover: (callback: (elementId: string, position: { x: number, y: number }) => void) => {
@@ -25,6 +29,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   onPageLoad: (callback: (url: string) => void) => {
     ipcRenderer.on('page-load', (event, url) => callback(url));
+  },
+  
+  // BrowserView events
+  onUrlUpdated: (callback: (url: string) => void) => {
+    ipcRenderer.on('url-updated', (event, url) => callback(url));
+  },
+  
+  onLoadError: (callback: (error: string) => void) => {
+    ipcRenderer.on('load-error', (event, error) => callback(error));
+  },
+  
+  onLoadingStarted: (callback: () => void) => {
+    ipcRenderer.on('loading-started', () => callback());
   }
 });
 
@@ -36,9 +53,16 @@ declare global {
       requestFreshCrawl: (url: string) => Promise<{ success: boolean; url: string }>;
       getPreview: (elementId: string) => Promise<{ mediaUrl: string; type: string }>;
       setTheme: (theme: 'light' | 'dark') => Promise<void>;
-      navigateTo: (url: string) => Promise<void>;
+      navigateTo: (url: string) => Promise<{ success: boolean; url?: string; error?: string }>;
+      getCurrentUrl: () => Promise<string | null>;
+      goBack: () => Promise<boolean>;
+      goForward: () => Promise<boolean>;
+      reload: () => Promise<boolean>;
       onElementHover: (callback: (elementId: string, position: { x: number, y: number }) => void) => void;
       onPageLoad: (callback: (url: string) => void) => void;
+      onUrlUpdated: (callback: (url: string) => void) => void;
+      onLoadError: (callback: (error: string) => void) => void;
+      onLoadingStarted: (callback: () => void) => void;
     };
   }
 }

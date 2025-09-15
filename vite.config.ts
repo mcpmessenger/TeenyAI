@@ -14,7 +14,8 @@ export default defineConfig({
         preload: resolve(__dirname, 'src/preload/index.ts')
       },
       output: {
-        entryFileNames: '[name].js'
+        entryFileNames: '[name].js',
+        format: 'cjs' // Use CommonJS for preload script
       }
     }
   },

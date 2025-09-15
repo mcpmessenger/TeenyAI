@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserWindow } from './components/BrowserWindow';
+// BrowserWindow component removed - using BrowserView in main process
 import { AIChatPanel } from './components/AIChatPanel';
 import { HoverPreview } from './components/HoverPreview';
 import { NavigationBar } from './components/NavigationBar';
@@ -9,15 +9,16 @@ import { useStore } from './store/browserStore';
 import './App.css';
 
 const App: React.FC = () => {
-  const { 
-    currentUrl, 
-    isLoading, 
-    aiChatOpen, 
-    theme, 
-    setCurrentUrl, 
-    setLoading, 
+  const {
+    currentUrl,
+    isLoading,
+    aiChatOpen,
+    theme,
+    navigateTo,
+    setCurrentUrl,
+    setLoading,
     toggleAIChat,
-    setTheme 
+    setTheme
   } = useStore();
 
   const [hoverPreview, setHoverPreview] = useState<{
@@ -39,13 +40,46 @@ const App: React.FC = () => {
         setCurrentUrl(url);
         setLoading(false);
       });
+
+      // BrowserView events
+      window.electronAPI.onUrlUpdated((url) => {
+        console.log('🌐 URL updated from BrowserView:', url);
+        setCurrentUrl(url);
+        setLoading(false);
+      });
+
+      window.electronAPI.onLoadError((error) => {
+        console.error('❌ Load error from BrowserView:', error);
+        setLoading(false);
+      });
+
+      window.electronAPI.onLoadingStarted(() => {
+        console.log('🔄 Loading started in BrowserView');
+        setLoading(true);
+      });
     }
-  }, [setCurrentUrl, setLoading]);
+  }, []);
 
   const handleNavigation = async (url: string) => {
-    setLoading(true);
+    console.log('🧭 Navigating to:', url);
     if (window.electronAPI) {
-      await window.electronAPI.navigateTo(url);
+      try {
+        const result = await window.electronAPI.navigateTo(url);
+        if (result.success) {
+          console.log('✅ Navigation successful:', result.url);
+          setCurrentUrl(result.url || url);
+          setLoading(false);
+        } else {
+          console.error('❌ Navigation failed:', result.error);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('❌ Navigation error:', error);
+        setLoading(false);
+      }
+    } else {
+      // Fallback to store navigation
+      navigateTo(url);
     }
   };
 
@@ -78,11 +112,113 @@ const App: React.FC = () => {
       />
       
       <div className="main-content">
-        <BrowserWindow
-          url={currentUrl}
-          isLoading={isLoading}
-          onHover={(elementId, position) => setHoverPreview({ elementId, position })}
-        />
+        {/* Fresh browser window is handled by main process */}
+        <div className="browser-view-container">
+          <div className="browser-status">
+            <h2>🌐 TeenyAI Browser - Real Browser Mode</h2>
+            <p><strong>Current URL:</strong> {currentUrl}</p>
+            <p><strong>Status:</strong> {isLoading ? 'Loading...' : 'Ready'}</p>
+            <p><strong>Mode:</strong> Real browser using Electron BrowserView</p>
+            <p><strong>Note:</strong> Web content should display in the main area below. This is a real browser, not an iframe!</p>
+            
+            <div className="browser-actions">
+              <button
+                onClick={() => window.electronAPI?.goBack()}
+                className="nav-button"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={() => window.electronAPI?.goForward()}
+                className="nav-button"
+              >
+                Forward →
+              </button>
+              <button
+                onClick={() => window.electronAPI?.reload()}
+                className="nav-button"
+              >
+                🔄 Reload
+              </button>
+            </div>
+          </div>
+          
+          {/* Debug panel - only show in development */}
+          <div className="debug-panel">
+            <div className="debug-actions">
+              <button 
+                onClick={async () => {
+                  console.log('🧪 Testing direct navigation to Google');
+                  if (window.electronAPI) {
+                    const result = await window.electronAPI.navigateTo('https://www.google.com');
+                    console.log('Navigation result:', result);
+                  }
+                }}
+                className="debug-button"
+              >
+                Test Google
+              </button>
+              <button 
+                onClick={async () => {
+                  console.log('🧪 Testing direct navigation to GitHub');
+                  if (window.electronAPI) {
+                    const result = await window.electronAPI.navigateTo('https://www.github.com');
+                    console.log('Navigation result:', result);
+                  }
+                }}
+                className="debug-button"
+              >
+                Test GitHub
+              </button>
+              <button 
+                onClick={() => {
+                  console.log('🔍 Current URL:', currentUrl);
+                  console.log('🔍 Loading state:', isLoading);
+                }}
+                className="debug-button"
+              >
+                Debug State
+              </button>
+              <button 
+                onClick={async () => {
+                  console.log('🔧 Testing fresh browser window');
+                  if (window.electronAPI) {
+                    const result = await window.electronAPI.navigateTo('https://www.example.com');
+                    console.log('Example.com navigation result:', result);
+                  }
+                }}
+                className="debug-button"
+              >
+                Test Example
+              </button>
+              <button 
+                onClick={() => {
+                  console.log('🔍 Checking browser window state');
+                  if (window.electronAPI) {
+                    window.electronAPI.getCurrentUrl().then(url => {
+                      console.log('Current URL from browser window:', url);
+                    });
+                  }
+                }}
+                className="debug-button"
+              >
+                Check URL
+              </button>
+              <button 
+                onClick={() => {
+                  console.log('🔧 Opening fresh browser window');
+                  if (window.electronAPI) {
+                    window.electronAPI.navigateTo('https://www.google.com');
+                  }
+                }}
+                className="debug-button"
+                style={{ background: '#4CAF50', color: 'white' }}
+              >
+                Open Browser
+              </button>
+            </div>
+          </div>
+        </div>
         
         <AIChatPanel
           isOpen={aiChatOpen}

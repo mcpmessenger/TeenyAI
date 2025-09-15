@@ -1,9 +1,60 @@
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, BrowserView, ipcMain, Menu } = require('electron');
 const { join } = require('path');
 const { isDev } = require('./utils');
 const { getAIService } = require('../backend/ai-service');
 
 let mainWindow = null;
+let webView = null; // BrowserView for real browser
+
+// IPC handlers for navigation - register immediately
+console.log('🔧 Registering IPC handlers...');
+
+ipcMain.handle('navigate-to', async (event, url) => {
+  console.log('🧭 Navigating to:', url);
+  if (webView) {
+    try {
+      await webView.webContents.loadURL(url);
+      return { success: true, url };
+    } catch (error) {
+      console.error('❌ Navigation failed:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  return { success: false, error: 'BrowserView not available' };
+});
+
+ipcMain.handle('get-current-url', async () => {
+  if (webView) {
+    return webView.webContents.getURL();
+  }
+  return null;
+});
+
+ipcMain.handle('go-back', async () => {
+  if (webView && webView.webContents.canGoBack()) {
+    webView.webContents.goBack();
+    return true;
+  }
+  return false;
+});
+
+ipcMain.handle('go-forward', async () => {
+  if (webView && webView.webContents.canGoForward()) {
+    webView.webContents.goForward();
+    return true;
+  }
+  return false;
+});
+
+ipcMain.handle('reload', async () => {
+  if (webView) {
+    webView.webContents.reload();
+    return true;
+  }
+  return false;
+});
+
+console.log('✅ All IPC handlers registered successfully');
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({
@@ -11,22 +62,23 @@ const createWindow = () => {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: join(__dirname, 'preload.js'),
-      webSecurity: false,
-      allowRunningInsecureContent: true,
-      experimentalFeatures: true,
-      sandbox: false
-    },
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          preload: join(__dirname, 'preload.js'),
+          webSecurity: true,
+          allowRunningInsecureContent: false,
+          experimentalFeatures: false,
+          sandbox: false,
+          additionalArguments: ['--disable-web-security', '--disable-features=VizDisplayCompositor']
+        },
     titleBarStyle: 'default',
     show: false
   });
 
   // Load the app
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3001');
+    mainWindow.loadURL('http://localhost:3004');
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(join(__dirname, 'index.html'));
@@ -39,9 +91,71 @@ const createWindow = () => {
     }
   });
 
+  // Create BrowserView for real browser content
+  console.log('🔧 Creating BrowserView for real browser...');
+  
+  webView = new BrowserView({
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false,
+      allowRunningInsecureContent: true,
+      experimentalFeatures: true
+    }
+  });
+
+  console.log('🔧 BrowserView created successfully');
+
+  // Add BrowserView to main window
+  mainWindow.setBrowserView(webView);
+  console.log('🔧 BrowserView added to main window');
+
+  // Set BrowserView bounds to fill the window (accounting for navigation bar)
+  const bounds = mainWindow.getBounds();
+  webView.setBounds({ x: 0, y: 60, width: bounds.width, height: bounds.height - 60 });
+  console.log('🔧 BrowserView bounds set:', { x: 0, y: 60, width: bounds.width, height: bounds.height - 60 });
+
+  // Load initial page
+  webView.webContents.loadURL('https://www.google.com');
+  console.log('🔧 Loading initial page: https://www.google.com');
+  
+  // Listen for BrowserView events
+  webView.webContents.on('did-finish-load', () => {
+    console.log('✅ BrowserView finished loading:', webView.webContents.getURL());
+    // Send URL update to renderer
+    mainWindow.webContents.send('url-updated', webView.webContents.getURL());
+  });
+
+  webView.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('❌ BrowserView failed to load:', errorDescription);
+    mainWindow.webContents.send('load-error', errorDescription);
+  });
+
+  webView.webContents.on('did-start-loading', () => {
+    console.log('🔄 BrowserView started loading');
+    mainWindow.webContents.send('loading-started');
+  });
+
+  webView.webContents.on('page-title-updated', (event, title) => {
+    console.log('📄 BrowserView page title:', title);
+  });
+
+  // Check if BrowserView is working
+  setTimeout(() => {
+    if (webView) {
+      console.log('🔍 BrowserView status check:');
+      console.log('- BrowserView exists:', !!webView);
+      console.log('- BrowserView URL:', webView.webContents.getURL());
+      console.log('- BrowserView loading:', webView.webContents.isLoading());
+    } else {
+      console.log('❌ BrowserView is null');
+    }
+  }, 2000);
+
   // Handle window closed
   mainWindow.on('closed', () => {
     mainWindow = null;
+    webView = null;
   });
 };
 

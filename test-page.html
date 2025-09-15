@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeenyAI Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.2em;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .feature-list {
+            text-align: left;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .feature-list li {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+        .test-button:hover {
+            background: #45a049;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 TeenyAI Test Page</h1>
+        <p>This is a test page to verify iframe loading functionality in the TeenyAI browser.</p>
+        
+        <div class="feature-list">
+            <h3>✅ Test Features:</h3>
+            <ul>
+                <li>✅ Basic HTML rendering</li>
+                <li>✅ CSS styling and animations</li>
+                <li>✅ JavaScript functionality</li>
+                <li>✅ Responsive design</li>
+                <li>✅ Interactive elements</li>
+            </ul>
+        </div>
+
+        <button class="test-button" onclick="testJavaScript()">Test JavaScript</button>
+        <button class="test-button" onclick="testConsole()">Test Console Log</button>
+        <button class="test-button" onclick="testAlert()">Test Alert</button>
+
+        <div id="status" class="status">
+            <strong>Status:</strong> Page loaded successfully! 🎉
+        </div>
+
+        <p><em>If you can see this page in the TeenyAI browser, the iframe loading is working correctly.</em></p>
+    </div>
+
+    <script>
+        function testJavaScript() {
+            const status = document.getElementById('status');
+            const time = new Date().toLocaleTimeString();
+            status.innerHTML = `<strong>Status:</strong> JavaScript working! Last test: ${time} 🚀`;
+        }
+
+        function testConsole() {
+            console.log('🧪 TeenyAI Test: Console logging works!');
+            console.log('📊 Test data:', {
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                url: window.location.href
+            });
+        }
+
+        function testAlert() {
+            alert('🧪 TeenyAI Test: Alert functionality works!');
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', function() {
+            console.log('🧪 TeenyAI Test: Page fully loaded!');
+            testConsole();
+        });
+
+        // Test DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🧪 TeenyAI Test: DOM ready!');
+        });
+    </script>
+</body>
+</html>

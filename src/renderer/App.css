@@ -271,11 +271,130 @@ body {
   position: relative;
 }
 
+/* Browser View Container */
+.browser-view-container {
+  flex: 1;
+  position: relative;
+  background: transparent; /* Make transparent so BrowserView shows through */
+  pointer-events: none; /* Allow clicks to pass through to BrowserView */
+  z-index: -1; /* Ensure it's below BrowserView */
+  height: 100%;
+  min-height: 400px;
+}
+
+.browser-status {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 1000;
+  max-width: 400px;
+  pointer-events: auto; /* Allow interaction with status panel */
+}
+
+.browser-status h2 {
+  margin: 0 0 15px 0;
+  color: #4CAF50;
+}
+
+.browser-status p {
+  margin: 8px 0;
+}
+
+.browser-actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.browser-actions .nav-button {
+  background: #2196F3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.browser-actions .nav-button:hover {
+  background: #1976D2;
+}
+
+.browser-status p {
+  margin: 5px 0;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.debug-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.debug-actions {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.debug-button {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s;
+}
+
+.debug-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
 /* Browser Window */
 .browser-window {
   flex: 1;
   position: relative;
   background: white;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
 }
 
 .debug-info {
@@ -293,6 +412,84 @@ body {
 
 .debug-info p {
   margin: 2px 0;
+}
+
+/* Browser content styling */
+.browser-content {
+  padding: 40px;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.browser-content h2 {
+  font-size: 2.5em;
+  margin-bottom: 20px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.browser-content p {
+  font-size: 1.2em;
+  margin: 10px 0;
+  opacity: 0.9;
+}
+
+.browser-actions {
+  margin: 30px 0;
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.browser-actions .nav-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.browser-actions .nav-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.browser-info {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 30px;
+  border-radius: 15px;
+  margin-top: 30px;
+  max-width: 600px;
+  backdrop-filter: blur(10px);
+}
+
+.browser-info h3 {
+  margin-bottom: 20px;
+  font-size: 1.5em;
+}
+
+.browser-info ul {
+  text-align: left;
+  list-style: none;
+  padding: 0;
+}
+
+.browser-info li {
+  margin: 10px 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #4CAF50;
 }
 
 .browser-content {
