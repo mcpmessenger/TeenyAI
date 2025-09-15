@@ -90,28 +90,49 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
   const handleApiKeySubmit = async () => {
     if (!apiKey.trim()) return;
     
+    // Basic validation
+    const trimmedKey = apiKey.trim();
+    if (!trimmedKey.startsWith('sk-')) {
+      setApiKeyStatus('error');
+      console.error('❌ API key must start with "sk-" or "sk-proj-"');
+      return;
+    }
+    
+    // Log the key for debugging (first 10 chars only)
+    console.log('🔑 Testing API key:', trimmedKey.substring(0, 10) + '...');
+    
+    if (trimmedKey.length < 20) {
+      setApiKeyStatus('error');
+      console.error('❌ API key appears to be too short');
+      return;
+    }
+    
     setApiKeyStatus('testing');
     
     try {
+      console.log('🔑 Step 1: Updating API key in main process...');
       // Update the API key in the main process
-      const updateResponse = await window.electronAPI?.updateApiKey(apiKey);
+      const updateResponse = await window.electronAPI?.updateApiKey(trimmedKey);
+      console.log('🔑 Update response:', updateResponse);
       
       if (updateResponse && updateResponse.success) {
+        console.log('🔑 Step 2: Testing API key with AI query...');
         // Test the API key by making a simple request
         const response = await window.electronAPI?.sendAIQuery('Test connection', 'Testing API key');
+        console.log('🔑 AI query response:', response);
         
         if (response && !response.error) {
           setApiKeyStatus('success');
           // Store the API key (in a real app, you'd want to encrypt this)
-          localStorage.setItem('openai_api_key', apiKey);
+          localStorage.setItem('openai_api_key', trimmedKey);
           console.log('✅ API key saved and tested successfully');
         } else {
           setApiKeyStatus('error');
-          console.error('❌ API key test failed');
+          console.error('❌ API key test failed:', response?.response);
         }
       } else {
         setApiKeyStatus('error');
-        console.error('❌ Failed to update API key');
+        console.error('❌ Failed to update API key:', updateResponse?.error);
       }
     } catch (error) {
       setApiKeyStatus('error');
@@ -181,6 +202,17 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
                      apiKeyStatus === 'success' ? '✅ Saved' :
                      apiKeyStatus === 'error' ? '❌ Error' : 'Save & Test'}
                   </button>
+                  <button
+                    onClick={() => {
+                      setApiKey('');
+                      setApiKeyStatus('idle');
+                      localStorage.removeItem('openai_api_key');
+                    }}
+                    className="api-key-button"
+                    style={{ background: '#6b7280', marginLeft: '8px' }}
+                  >
+                    Clear
+                  </button>
                 </div>
                 {apiKeyStatus === 'success' && (
                   <div className="api-key-success">
@@ -189,7 +221,17 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
                 )}
                 {apiKeyStatus === 'error' && (
                   <div className="api-key-error">
-                    ❌ API key test failed. Please check your key and try again.
+                    ❌ API key validation failed. Please check:
+                    <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                      <li>Key starts with "sk-" (standard keys) or "sk-proj-" (project keys)</li>
+                      <li>Key is complete (not truncated)</li>
+                      <li>Key is valid and active</li>
+                      <li>You have internet connection</li>
+                      <li>For project keys: Make sure the project is active</li>
+                    </ul>
+                    <strong>Tip:</strong> Copy the key directly from OpenAI platform to avoid extra characters.
+                    <br />
+                    <strong>Note:</strong> Project keys (sk-proj-) may have different permissions than standard keys.
                   </div>
                 )}
               </div>
@@ -235,7 +277,7 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
       </div>
 
       <div className="troubleshooting-footer">
-        <p>💡 <strong>Tip:</strong> Use the console (bottom right button) to see detailed error messages and copy them for debugging.</p>
+        <p>💡 <strong>Tip:</strong> Right-click and select "Inspect" to open developer tools and view console messages for debugging.</p>
       </div>
     </div>
   );

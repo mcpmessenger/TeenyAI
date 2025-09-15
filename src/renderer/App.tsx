@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { AIChatPanel } from './components/AIChatPanel';
 import { HoverPreview } from './components/HoverPreview';
 import { NavigationBar } from './components/NavigationBar';
-import { Console } from './components/Console';
 import { TroubleshootingPanel } from './components/TroubleshootingPanel';
 import { useStore } from './store/browserStore';
 import './App.css';
@@ -26,7 +25,6 @@ const App: React.FC = () => {
     position: { x: number; y: number };
   } | null>(null);
 
-  const [consoleOpen, setConsoleOpen] = useState(false);
   const [troubleshootingOpen, setTroubleshootingOpen] = useState(false);
 
   useEffect(() => {
@@ -167,23 +165,12 @@ const App: React.FC = () => {
         />
       )}
 
-      <Console 
-        isOpen={consoleOpen}
-        onClose={() => setConsoleOpen(false)}
-      />
 
       <TroubleshootingPanel
         isOpen={troubleshootingOpen}
         onClose={() => setTroubleshootingOpen(false)}
       />
 
-      <button 
-        className="console-toggle"
-        onClick={() => setConsoleOpen(!consoleOpen)}
-        title="Toggle Console"
-      >
-        {consoleOpen ? 'Hide Console' : 'Show Console'}
-      </button>
 
     </div>
   );

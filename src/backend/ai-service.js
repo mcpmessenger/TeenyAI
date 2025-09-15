@@ -10,27 +10,46 @@ class AIService {
   initializeOpenAI() {
     // Get API key from environment or config
     let apiKey = this.config.apiKey || process.env.OPENAI_API_KEY;
+    console.log('🔑 initializeOpenAI - API key from config:', !!this.config.apiKey);
+    console.log('🔑 initializeOpenAI - API key from env:', !!process.env.OPENAI_API_KEY);
+    console.log('🔑 initializeOpenAI - Final API key:', apiKey?.substring(0, 15) + '...');
     
     if (!apiKey) {
       console.warn('⚠️ OpenAI API key not found in environment or config');
+      this.openai = null;
       return;
     }
 
-    this.openai = new OpenAI({
-      apiKey: apiKey,
-    });
+    try {
+      this.openai = new OpenAI({
+        apiKey: apiKey,
+      });
+      console.log('✅ OpenAI instance created successfully');
+    } catch (error) {
+      console.error('❌ Failed to create OpenAI instance:', error);
+      this.openai = null;
+    }
   }
 
   updateApiKey(newApiKey) {
+    console.log('🔑 updateApiKey called with key:', newApiKey?.substring(0, 15) + '...');
     this.config.apiKey = newApiKey;
     this.initializeOpenAI();
+    console.log('🔑 OpenAI instance after update:', !!this.openai);
   }
 
   async generateGuidance(query, pageContext) {
     try {
+      console.log('🤖 generateGuidance called with query:', query);
+      console.log('🤖 OpenAI instance exists:', !!this.openai);
+      console.log('🤖 API key configured:', !!this.config.apiKey);
+      console.log('🤖 API key preview:', this.config.apiKey?.substring(0, 15) + '...');
+      
       if (!this.openai) {
         throw new Error('OpenAI API key not configured. Please set your API key in the Help panel.');
       }
+      
+      console.log('🤖 Making OpenAI API request...');
       const systemPrompt = `You are TeenyAI, an intelligent AI assistant built into a web browser specifically designed to help non-tech-savvy users navigate websites and complete online tasks with confidence.
 
 Your mission is to make the internet accessible and empowering for everyone, especially those who find modern websites confusing or overwhelming.
@@ -71,7 +90,21 @@ Remember: You're not just answering questions - you're building the user's confi
       return completion.choices[0]?.message?.content || 'I apologize, but I could not generate a response. Please try again.';
     } catch (error) {
       console.error('AI Service Error:', error);
-      return 'I encountered an error while processing your request. Please check your internet connection and try again.';
+      
+      // Provide specific error messages based on error type
+      let errorMessage = 'I encountered an error while processing your request. Please check your internet connection and try again.';
+      
+      if (error.code === 'invalid_api_key') {
+        errorMessage = 'Invalid API key. Please check your OpenAI API key in the Help panel.';
+      } else if (error.code === 'insufficient_quota') {
+        errorMessage = 'API quota exceeded. Please check your OpenAI account billing.';
+      } else if (error.code === 'rate_limit_exceeded') {
+        errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
+      } else if (error.message?.includes('API key')) {
+        errorMessage = 'API key issue. Please verify your key is correct and active.';
+      }
+      
+      return errorMessage;
     }
   }
 
@@ -181,14 +214,21 @@ const getAIService = () => {
 };
 
 const updateAIServiceApiKey = (newApiKey) => {
+  console.log('🔑 updateAIServiceApiKey called with:', newApiKey?.substring(0, 15) + '...');
+  console.log('🔑 aiServiceInstance exists:', !!aiServiceInstance);
+  
   if (aiServiceInstance) {
+    console.log('🔑 Updating existing AI service instance');
     aiServiceInstance.updateApiKey(newApiKey);
   } else {
+    console.log('🔑 Creating new AI service instance');
     // Create new instance with the new API key
     aiServiceInstance = new AIService({
       apiKey: newApiKey
     });
   }
+  
+  console.log('🔑 AI service instance after update:', !!aiServiceInstance);
 };
 
 module.exports = { AIService, getAIService, updateAIServiceApiKey };
