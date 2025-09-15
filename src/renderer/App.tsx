@@ -68,25 +68,13 @@ const App: React.FC = () => {
 
   const handleNavigation = async (url: string) => {
     console.log('🧭 Navigating to:', url);
-    if (window.electronAPI) {
-      try {
-        const result = await window.electronAPI.navigateTo(url);
-        if (result.success) {
-          console.log('✅ Navigation successful:', result.url);
-          setCurrentUrl(result.url || url);
-          // Set loading to false after a short delay to allow content to load
-          setTimeout(() => setLoading(false), 1000);
-        } else {
-          console.error('❌ Navigation failed:', result.error);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('❌ Navigation error:', error);
-        setLoading(false);
-      }
-    } else {
-      // Fallback to store navigation
-      navigateTo(url);
+    setLoading(true);
+    setCurrentUrl(url);
+    
+    // Update WebView src directly
+    const webview = document.getElementById('webview') as any;
+    if (webview) {
+      webview.src = url;
     }
   };
 
@@ -134,36 +122,32 @@ const App: React.FC = () => {
       />
       
       <div className="main-content">
-        {/* Web content is handled by BrowserView in main process */}
+        {/* Web content using WebView tag for proper layering */}
         <div className="browser-view-container">
-          <div className="browser-status">
-            <h2>🌐 TeenyAI Browser - Real Browser Mode</h2>
-            <p><strong>Current URL:</strong> {currentUrl}</p>
-            <p><strong>Status:</strong> {isLoading ? 'Loading...' : 'Ready'}</p>
-            <p><strong>Mode:</strong> Real browser using Electron BrowserView</p>
-            <p><strong>Note:</strong> Web content should display in the main area below. This is a real browser, not an iframe!</p>
-            
-            <div className="browser-actions">
-              <button
-                onClick={() => window.electronAPI?.goBack()}
-                className="nav-button"
-              >
-                ← Back
-              </button>
-              <button
-                onClick={() => window.electronAPI?.goForward()}
-                className="nav-button"
-              >
-                Forward →
-              </button>
-              <button
-                onClick={() => window.electronAPI?.reload()}
-                className="nav-button"
-              >
-                🔄 Reload
-              </button>
-            </div>
-          </div>
+          <webview
+            id="webview"
+            src={currentUrl}
+            className="webview"
+            preload="./webview-preload.js"
+            nodeintegration="false"
+            websecurity="true"
+            allowpopups="false"
+            disablewebsecurity="false"
+            onLoadStart={() => setLoading(true)}
+            onLoadStop={() => setLoading(false)}
+            onNewWindow={(e) => {
+              // Handle new window requests - open in external browser
+              e.preventDefault();
+              if (window.electronAPI?.openExternal) {
+                window.electronAPI.openExternal(e.url);
+              }
+            }}
+            onPermissionRequest={(e) => {
+              // Deny all permission requests for security
+              e.preventDefault();
+              console.log('Permission denied:', e.permission);
+            }}
+          />
         </div>
         
         

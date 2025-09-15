@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // AI Chat panel management
   toggleAIChat: (isOpen: boolean) => ipcRenderer.invoke('toggle-ai-chat', isOpen),
   
+  // External browser functionality
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  
   // Navigation
   navigateTo: (url: string) => ipcRenderer.invoke('navigate-to', url),
   getCurrentUrl: () => ipcRenderer.invoke('get-current-url'),

@@ -74,7 +74,8 @@ const createWindow = () => {
           webSecurity: true,
           allowRunningInsecureContent: false,
           experimentalFeatures: false,
-          sandbox: false
+          sandbox: false,
+          webviewTag: true // Enable WebView tag for proper layering
         },
     titleBarStyle: 'default',
     show: false
@@ -129,43 +130,13 @@ const createWindow = () => {
     console.log('🔍 Main window title:', mainWindow.webContents.getTitle());
   });
 
-  // Create BrowserView for real browser content
-  console.log('🔧 Creating BrowserView for real browser...');
+  // WebView approach - no BrowserView needed
+  console.log('🔧 Using WebView tag approach for proper layering');
   
-  webView = new BrowserView({
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      experimentalFeatures: false
-    }
-  });
-
-  console.log('🔧 BrowserView created successfully');
-
-  // Load initial page
-  webView.webContents.loadURL('https://www.google.com');
-  console.log('🔧 Loading initial page: https://www.google.com');
-
-  // Wait for main window to be ready before adding BrowserView
+  // Send message to renderer that web content is ready
   mainWindow.webContents.once('did-finish-load', () => {
-    console.log('✅ Main window finished loading, adding BrowserView');
-    
-    // Add a delay to ensure the navigation bar renders first
-    setTimeout(() => {
-      // Add BrowserView to main window
-      mainWindow.setBrowserView(webView);
-      console.log('🔧 BrowserView added to main window');
-
-      // Set BrowserView bounds to fill the window (accounting for navigation bar)
-      const bounds = mainWindow.getBounds();
-      webView.setBounds({ x: 0, y: 60, width: bounds.width, height: bounds.height - 60 });
-      console.log('🔧 BrowserView bounds set:', { x: 0, y: 60, width: bounds.width, height: bounds.height - 60 });
-      
-      // Send message to renderer that BrowserView is ready
-      mainWindow.webContents.send('browser-view-ready');
-    }, 1000); // 1 second delay to ensure navigation bar renders
+    console.log('✅ Main window finished loading, WebView ready');
+    mainWindow.webContents.send('webview-ready');
   });
   
   // Listen for BrowserView events
@@ -466,6 +437,19 @@ ipcMain.handle('get-preview', async (event, elementId) => {
 ipcMain.handle('set-theme', async (event, theme) => {
   console.log('Theme change requested:', theme);
   return { success: true };
+});
+
+// IPC handler for opening external URLs
+ipcMain.handle('open-external', async (event, url) => {
+  console.log('🌐 Opening external URL:', url);
+  try {
+    const { shell } = require('electron');
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Failed to open external URL:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 // IPC handler for AI chat panel toggle
