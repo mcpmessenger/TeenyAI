@@ -105,6 +105,21 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAIChatToggle = async () => {
+    const newAIChatOpen = !aiChatOpen;
+    console.log(`🤖 Toggling AI chat panel: ${newAIChatOpen ? 'open' : 'closed'}`);
+    toggleAIChat();
+    
+    // Notify main process to resize BrowserView
+    if (window.electronAPI) {
+      console.log('📡 Sending toggle-ai-chat IPC message');
+      const result = await window.electronAPI.toggleAIChat(newAIChatOpen);
+      console.log('📡 IPC result:', result);
+    } else {
+      console.log('❌ electronAPI not available');
+    }
+  };
+
   return (
     <div className={`app ${theme}`}>
       <NavigationBar
@@ -113,13 +128,13 @@ const App: React.FC = () => {
         onNavigate={handleNavigation}
         onFreshCrawl={handleFreshCrawl}
         onToggleTheme={handleThemeToggle}
-        onToggleAIChat={() => toggleAIChat()}
+        onToggleAIChat={handleAIChatToggle}
         onToggleHelp={() => setTroubleshootingOpen(!troubleshootingOpen)}
         theme={theme}
       />
       
       <div className="main-content">
-        {/* Fresh browser window is handled by main process */}
+        {/* Web content is handled by BrowserView in main process */}
         <div className="browser-view-container">
           <div className="browser-status">
             <h2>🌐 TeenyAI Browser - Real Browser Mode</h2>
@@ -149,88 +164,14 @@ const App: React.FC = () => {
               </button>
             </div>
           </div>
-          
-          {/* Debug panel - only show in development */}
-          <div className="debug-panel">
-            <div className="debug-actions">
-              <button 
-                onClick={async () => {
-                  console.log('🧪 Testing direct navigation to Google');
-                  if (window.electronAPI) {
-                    const result = await window.electronAPI.navigateTo('https://www.google.com');
-                    console.log('Navigation result:', result);
-                  }
-                }}
-                className="debug-button"
-              >
-                Test Google
-              </button>
-              <button 
-                onClick={async () => {
-                  console.log('🧪 Testing direct navigation to GitHub');
-                  if (window.electronAPI) {
-                    const result = await window.electronAPI.navigateTo('https://www.github.com');
-                    console.log('Navigation result:', result);
-                  }
-                }}
-                className="debug-button"
-              >
-                Test GitHub
-              </button>
-              <button 
-                onClick={() => {
-                  console.log('🔍 Current URL:', currentUrl);
-                  console.log('🔍 Loading state:', isLoading);
-                }}
-                className="debug-button"
-              >
-                Debug State
-              </button>
-              <button 
-                onClick={async () => {
-                  console.log('🔧 Testing fresh browser window');
-                  if (window.electronAPI) {
-                    const result = await window.electronAPI.navigateTo('https://www.example.com');
-                    console.log('Example.com navigation result:', result);
-                  }
-                }}
-                className="debug-button"
-              >
-                Test Example
-              </button>
-              <button 
-                onClick={() => {
-                  console.log('🔍 Checking browser window state');
-                  if (window.electronAPI) {
-                    window.electronAPI.getCurrentUrl().then(url => {
-                      console.log('Current URL from browser window:', url);
-                    });
-                  }
-                }}
-                className="debug-button"
-              >
-                Check URL
-              </button>
-              <button 
-                onClick={() => {
-                  console.log('🔧 Opening fresh browser window');
-                  if (window.electronAPI) {
-                    window.electronAPI.navigateTo('https://www.google.com');
-                  }
-                }}
-                className="debug-button"
-                style={{ background: '#4CAF50', color: 'white' }}
-              >
-                Open Browser
-              </button>
-            </div>
-          </div>
         </div>
+        
+        
         
         <AIChatPanel
           isOpen={aiChatOpen}
           currentUrl={currentUrl}
-          onClose={() => toggleAIChat()}
+          onClose={handleAIChatToggle}
         />
       </div>
 

@@ -14,8 +14,9 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { chatHistory, addChatMessage, clearChatHistory } = useStore();
+  const { chatHistory, addChatMessage, clearChatHistory, pageAnalysis, setPageAnalysis } = useStore();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -55,10 +56,34 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({
     setInput(action);
   };
 
+  const analyzeCurrentPage = async () => {
+    if (isAnalyzing) return;
+    
+    setIsAnalyzing(true);
+    addChatMessage('assistant', '🔍 Analyzing this page to understand what you can do here...');
+    
+    try {
+      if (window.electronAPI) {
+        const result = await window.electronAPI.analyzePage(currentUrl);
+        if (result.error) {
+          addChatMessage('assistant', `⚠️ Could not analyze the page: ${result.error}`);
+        } else {
+          setPageAnalysis(result.analysis);
+          addChatMessage('assistant', `✅ Page analyzed! I found ${result.analysis.keyActions?.length || 0} main actions you can take. Ask me about any of them!`);
+        }
+      }
+    } catch (error) {
+      console.error('Page analysis error:', error);
+      addChatMessage('assistant', 'Sorry, I could not analyze this page. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="ai-chat-panel">
+    <div className={`ai-chat-panel ${isOpen ? 'is-open' : ''}`}>
       <div className="chat-header">
         <h3>AI Assistant</h3>
         <div className="chat-actions">
@@ -112,16 +137,23 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({
 
       <div className="quick-actions">
         <button 
-          onClick={() => handleQuickAction("How do I complete the main task on this page?")}
-          className="quick-action-button"
+          onClick={analyzeCurrentPage}
+          className="quick-action-button primary"
+          disabled={isAnalyzing}
         >
-          Guide me through this page
+          {isAnalyzing ? '🔍 Analyzing...' : '🔍 Analyze this page'}
         </button>
         <button 
-          onClick={() => handleQuickAction("What will happen if I click the main button?")}
+          onClick={() => handleQuickAction("What can I do on this page?")}
           className="quick-action-button"
         >
-          Explain the buttons
+          What can I do here?
+        </button>
+        <button 
+          onClick={() => handleQuickAction("Guide me through the main task on this page")}
+          className="quick-action-button"
+        >
+          Guide me step-by-step
         </button>
         <button 
           onClick={() => handleQuickAction("Is this website safe to use?")}
@@ -129,6 +161,20 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({
         >
           Safety check
         </button>
+        {pageAnalysis && pageAnalysis.keyActions && pageAnalysis.keyActions.length > 0 && (
+          <div className="page-actions">
+            <h4>Main actions on this page:</h4>
+            {pageAnalysis.keyActions.slice(0, 3).map((action, index) => (
+              <button
+                key={index}
+                onClick={() => handleQuickAction(`Tell me about "${action.element}" - what does it do?`)}
+                className="quick-action-button small"
+              >
+                {action.element}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="chat-input-form">
@@ -144,6 +190,20 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({
           Send
         </button>
       </form>
+      
+      {/* AI Assistant iframe for enhanced functionality */}
+      <iframe
+        className="ai-assistant-iframe"
+        src="about:blank"
+        title="AI Assistant"
+        style={{
+          width: '100%',
+          height: '200px',
+          border: 'none',
+          marginTop: '10px',
+          display: 'none' // Hidden for now, can be enabled later
+        }}
+      />
     </div>
   );
 };

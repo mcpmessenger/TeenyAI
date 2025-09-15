@@ -82,7 +82,27 @@ const createWindow = () => {
 
   // Load the app
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3000');
+    // Try to find the correct Vite port
+    const findVitePort = async () => {
+      const ports = [3000, 3001, 3002, 3003, 3004, 3005, 3006, 3007];
+      for (const port of ports) {
+        try {
+          const response = await fetch(`http://localhost:${port}`);
+          if (response.ok) {
+            console.log(`✅ Found Vite on port ${port}`);
+            mainWindow.loadURL(`http://localhost:${port}`);
+            return;
+          }
+        } catch (e) {
+          // Port not ready, try next
+        }
+      }
+      console.log('❌ No Vite server found, retrying...');
+      setTimeout(findVitePort, 1000);
+    };
+    
+    // Start with a delay to let Vite start up
+    setTimeout(findVitePort, 2000);
     // DevTools removed for cleaner experience
     // mainWindow.webContents.openDevTools();
   } else {
@@ -92,8 +112,21 @@ const createWindow = () => {
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
     if (mainWindow) {
+      console.log('✅ Main window ready to show');
       mainWindow.show();
     }
+  });
+
+  // Handle load errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.log('❌ Main window failed to load:', errorCode, errorDescription, validatedURL);
+  });
+
+  // Handle when page loads
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('✅ Main window finished loading');
+    console.log('🔍 Main window URL:', mainWindow.webContents.getURL());
+    console.log('🔍 Main window title:', mainWindow.webContents.getTitle());
   });
 
   // Create BrowserView for real browser content
@@ -111,18 +144,29 @@ const createWindow = () => {
 
   console.log('🔧 BrowserView created successfully');
 
-  // Add BrowserView to main window
-  mainWindow.setBrowserView(webView);
-  console.log('🔧 BrowserView added to main window');
-
-  // Set BrowserView bounds to fill the window (accounting for navigation bar)
-  const bounds = mainWindow.getBounds();
-  webView.setBounds({ x: 0, y: 60, width: bounds.width, height: bounds.height - 60 });
-  console.log('🔧 BrowserView bounds set:', { x: 0, y: 60, width: bounds.width, height: bounds.height - 60 });
-
   // Load initial page
   webView.webContents.loadURL('https://www.google.com');
   console.log('🔧 Loading initial page: https://www.google.com');
+
+  // Wait for main window to be ready before adding BrowserView
+  mainWindow.webContents.once('did-finish-load', () => {
+    console.log('✅ Main window finished loading, adding BrowserView');
+    
+    // Add a delay to ensure the navigation bar renders first
+    setTimeout(() => {
+      // Add BrowserView to main window
+      mainWindow.setBrowserView(webView);
+      console.log('🔧 BrowserView added to main window');
+
+      // Set BrowserView bounds to fill the window (accounting for navigation bar)
+      const bounds = mainWindow.getBounds();
+      webView.setBounds({ x: 0, y: 60, width: bounds.width, height: bounds.height - 60 });
+      console.log('🔧 BrowserView bounds set:', { x: 0, y: 60, width: bounds.width, height: bounds.height - 60 });
+      
+      // Send message to renderer that BrowserView is ready
+      mainWindow.webContents.send('browser-view-ready');
+    }, 1000); // 1 second delay to ensure navigation bar renders
+  });
   
   // Listen for BrowserView events
   let loadingTimeout = null;
@@ -280,7 +324,7 @@ app.on('activate', () => {
 
 // IPC handlers for AI browser functionality
 ipcMain.handle('ai-query', async (event, query, pageContext) => {
-  console.log('AI Query received:', query);
+  console.log('🤖 AI Query received:', query);
   
   const aiService = getAIService();
   if (!aiService) {
@@ -291,14 +335,118 @@ ipcMain.handle('ai-query', async (event, query, pageContext) => {
   }
 
   try {
-    const response = await aiService.generateGuidance(query, pageContext);
+    // Get current page context if not provided
+    let context = pageContext;
+    if (!context && webView) {
+      try {
+        const currentUrl = webView.webContents.getURL();
+        console.log('🔍 Extracting page context from:', currentUrl);
+        
+        // Get page title and basic info
+        const title = webView.webContents.getTitle();
+        context = `Page: ${title}\nURL: ${currentUrl}`;
+        
+        // Try to get page content for analysis
+        try {
+          const pageContent = await webView.webContents.executeJavaScript(`
+            (() => {
+              const body = document.body;
+              if (!body) return 'Page content not available';
+              
+              // Extract text content and key elements
+              const textContent = body.innerText || body.textContent || '';
+              const buttons = Array.from(document.querySelectorAll('button, input[type="button"], input[type="submit"]'))
+                .map(el => el.textContent || el.value || 'Button').join(', ');
+              const links = Array.from(document.querySelectorAll('a'))
+                .map(el => el.textContent || el.href).slice(0, 10).join(', ');
+              const forms = Array.from(document.querySelectorAll('form'))
+                .map(el => el.action || 'Form').join(', ');
+              
+              return {
+                title: document.title,
+                text: textContent.substring(0, 2000),
+                buttons: buttons,
+                links: links,
+                forms: forms,
+                url: window.location.href
+              };
+            })()
+          `);
+          
+          if (pageContent && typeof pageContent === 'object') {
+            context = `Page: ${pageContent.title}
+URL: ${pageContent.url}
+Content: ${pageContent.text}
+Buttons: ${pageContent.buttons}
+Links: ${pageContent.links}
+Forms: ${pageContent.forms}`;
+          }
+        } catch (jsError) {
+          console.log('⚠️ Could not extract detailed page content:', jsError.message);
+        }
+      } catch (error) {
+        console.log('⚠️ Could not get page context:', error.message);
+      }
+    }
+
+    console.log('🧠 Processing AI query with context...');
+    const response = await aiService.generateGuidance(query, context);
+    console.log('✅ AI response generated');
     return { response, error: false };
   } catch (error) {
-    console.error('AI Query Error:', error);
+    console.error('❌ AI Query Error:', error);
     return { 
       response: 'I encountered an error while processing your request. Please try again.',
       error: true 
     };
+  }
+});
+
+ipcMain.handle('analyze-page', async (event, url) => {
+  console.log('🔍 Page analysis requested for:', url);
+  
+  const aiService = getAIService();
+  if (!aiService) {
+    return { 
+      analysis: null,
+      error: 'AI service not available' 
+    };
+  }
+
+  try {
+    if (webView) {
+      const currentUrl = webView.webContents.getURL();
+      console.log('📄 Analyzing page:', currentUrl);
+      
+      // Extract page content for analysis
+      const pageContent = await webView.webContents.executeJavaScript(`
+        (() => {
+          const body = document.body;
+          if (!body) return 'Page content not available';
+          
+          return {
+            title: document.title,
+            text: body.innerText || body.textContent || '',
+            url: window.location.href,
+            buttons: Array.from(document.querySelectorAll('button, input[type="button"], input[type="submit"]'))
+              .map(el => ({ text: el.textContent || el.value, id: el.id, className: el.className })),
+            links: Array.from(document.querySelectorAll('a'))
+              .map(el => ({ text: el.textContent, href: el.href })).slice(0, 20),
+            forms: Array.from(document.querySelectorAll('form'))
+              .map(el => ({ action: el.action, method: el.method, inputs: Array.from(el.querySelectorAll('input')).map(input => input.type) }))
+          };
+        })()
+      `);
+      
+      const analysis = await aiService.analyzePageElements(JSON.stringify(pageContent), currentUrl);
+      console.log('✅ Page analysis complete');
+      return { analysis, error: false };
+    }
+    
+    return { analysis: null, error: 'No page loaded' };
+  } catch (error) {
+    console.error('❌ Page analysis error:', error);
+    return { analysis: null, error: error.message };
   }
 });
 
@@ -317,5 +465,57 @@ ipcMain.handle('get-preview', async (event, elementId) => {
 
 ipcMain.handle('set-theme', async (event, theme) => {
   console.log('Theme change requested:', theme);
+  return { success: true };
+});
+
+// IPC handler for AI chat panel toggle
+ipcMain.handle('toggle-ai-chat', async (event, isOpen) => {
+  console.log(`🤖 AI Chat panel toggled: ${isOpen ? 'open' : 'closed'}`);
+  
+  if (webView && mainWindow) {
+    const windowBounds = mainWindow.getBounds();
+    const chatPanelWidth = 350; // Width of the AI chat panel
+    
+    if (isOpen) {
+      // Shrink main window to make room for AI chat panel
+      console.log(`📏 Shrinking main window to make room for AI chat panel`);
+      const newWidth = windowBounds.width - chatPanelWidth;
+      mainWindow.setBounds({
+        x: windowBounds.x,
+        y: windowBounds.y,
+        width: newWidth,
+        height: windowBounds.height
+      });
+      
+      // Update BrowserView bounds to fit the smaller window
+      webView.setBounds({
+        x: 0,
+        y: 60, // Below navigation bar
+        width: newWidth,
+        height: windowBounds.height - 60
+      });
+      console.log(`✅ Main window resized to width: ${newWidth}`);
+    } else {
+      // Restore full window size when AI chat is closed
+      console.log(`📏 Restoring full window size`);
+      const originalWidth = windowBounds.width + chatPanelWidth;
+      mainWindow.setBounds({
+        x: windowBounds.x,
+        y: windowBounds.y,
+        width: originalWidth,
+        height: windowBounds.height
+      });
+      
+      // Update BrowserView bounds to fit the full window
+      webView.setBounds({
+        x: 0,
+        y: 60, // Below navigation bar
+        width: originalWidth,
+        height: windowBounds.height - 60
+      });
+      console.log(`✅ Main window restored to width: ${originalWidth}`);
+    }
+  }
+  
   return { success: true };
 });

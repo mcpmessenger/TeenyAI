@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // AI Chat functionality
   sendAIQuery: (query: string, pageContext?: string) => ipcRenderer.invoke('ai-query', query, pageContext),
   
+  // Page analysis functionality
+  analyzePage: (url: string) => ipcRenderer.invoke('analyze-page', url),
+  
   // Fresh crawl functionality
   requestFreshCrawl: (url: string) => ipcRenderer.invoke('fresh-crawl', url),
   
@@ -14,6 +17,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Theme management
   setTheme: (theme: 'light' | 'dark') => ipcRenderer.invoke('set-theme', theme),
+  
+  // AI Chat panel management
+  toggleAIChat: (isOpen: boolean) => ipcRenderer.invoke('toggle-ai-chat', isOpen),
   
   // Navigation
   navigateTo: (url: string) => ipcRenderer.invoke('navigate-to', url),
@@ -54,9 +60,11 @@ declare global {
   interface Window {
     electronAPI: {
       sendAIQuery: (query: string, pageContext?: string) => Promise<{ response: string; error?: boolean }>;
+      analyzePage: (url: string) => Promise<{ analysis: any; error?: string }>;
       requestFreshCrawl: (url: string) => Promise<{ success: boolean; url: string }>;
       getPreview: (elementId: string) => Promise<{ mediaUrl: string; type: string }>;
       setTheme: (theme: 'light' | 'dark') => Promise<void>;
+      toggleAIChat: (isOpen: boolean) => Promise<{ success: boolean }>;
       navigateTo: (url: string) => Promise<{ success: boolean; url?: string; error?: string }>;
       getCurrentUrl: () => Promise<string | null>;
       goBack: () => Promise<boolean>;
