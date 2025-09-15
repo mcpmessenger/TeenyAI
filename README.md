@@ -47,13 +47,21 @@ A modern, AI-enhanced browser built with Electron, React, and TypeScript. TeenyA
 
 ## 📦 Available Scripts
 
+### Development
 - `npm run dev` - Start development server (Vite + Electron)
 - `npm run dev:vite` - Start Vite development server only
 - `npm run dev:electron` - Start Electron only
+
+### Building & Packaging
 - `npm run build` - Build for production
-- `npm run package` - Package the app for distribution
-- `npm run package:win` - Package for Windows
-- `npm run package:mac` - Package for macOS
+- `npm run package:win` - Create Windows portable executable
+- `npm run package:mac` - Create macOS zip package
+- `npm run package:linux` - Create Linux AppImage
+- `npm run package:all` - Build for all platforms
+
+### Utilities
+- `npm run clean` - Clean all build artifacts
+- `npm run lint` - Run ESLint
 
 ## 🏗️ Project Structure
 
@@ -100,11 +108,53 @@ TeenyAI/
 ### Building for Production
 
 ```bash
+# Build the application
 npm run build
-npm run package
+
+# Create installers for specific platforms
+npm run package:win    # Windows portable executable
+npm run package:mac    # macOS zip package
+npm run package:linux  # Linux AppImage
+npm run package:all    # All platforms
 ```
 
+### 📦 Distribution & Sharing
+
+TeenyAI can be packaged as standalone installers for easy sharing:
+
+**Windows**: Creates a portable `TeenyAI.exe` that runs without installation
+**macOS**: Creates a `.zip` package for easy distribution
+**Linux**: Creates an `.AppImage` for universal compatibility
+
+**Output Location**: All installers are generated in the `release/` folder
+
+**Sharing with Team**: 
+1. Run `npm run package:win` (or your target platform)
+2. Zip the `release/win-unpacked/` folder
+3. Upload to Google Drive, Dropbox, or GitHub Releases
+4. Share the download link with your team
+
+For detailed deployment instructions, see [INSTALLER_DEPLOYMENT_GUIDE.md](INSTALLER_DEPLOYMENT_GUIDE.md)
+
 ## 🎉 Recent Updates
+
+### ✅ Production Installer System Complete
+TeenyAI now has a complete build and distribution system! You can create standalone installers for easy sharing with your team.
+
+**New Build System:**
+- ✅ **Windows Portable**: Creates `TeenyAI.exe` that runs without installation
+- ✅ **macOS Packages**: Generates `.zip` files for macOS distribution
+- ✅ **Linux AppImages**: Universal Linux compatibility
+- ✅ **One-Command Builds**: Simple `npm run package:win` commands
+- ✅ **Team Sharing Ready**: Upload to cloud storage and share links
+
+**Build Commands:**
+```bash
+npm run package:win    # Windows portable executable
+npm run package:mac    # macOS zip package  
+npm run package:linux  # Linux AppImage
+npm run package:all    # All platforms at once
+```
 
 ### ✅ Critical Layering Issue Resolved - WebView Solution
 The persistent BrowserView layering issue that was blocking AI features has been completely solved! We implemented a production-ready WebView tag approach that provides proper layering control.
@@ -127,6 +177,7 @@ The persistent BrowserView layering issue that was blocking AI features has been
 - **✅ Real Web Browsing**: Google, GitHub, and all websites load perfectly
 - **✅ Production Ready**: Enterprise security and performance optimizations
 - **✅ Clean Architecture**: WebView renders within DOM for proper control
+- **✅ Distribution Ready**: Standalone installers for all platforms
 
 ### 🔧 API Configuration
 The AI features are now ready for real page analysis! Configure your OpenAI API key:

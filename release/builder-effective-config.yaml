@@ -1,0 +1,20 @@
+directories:
+  output: release
+  buildResources: build
+appId: com.teenyai.browser
+productName: TeenyAI
+copyright: Copyright © 2024 TeenyAI
+files:
+  - filter:
+      - build/**/*
+      - node_modules/**/*
+      - package.json
+win:
+  target: portable
+  publisherName: TeenyAI
+mac:
+  target: zip
+linux:
+  target: AppImage
+extends: ./electron-builder.config.js
+electronVersion: 27.3.11

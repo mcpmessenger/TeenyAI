@@ -2,7 +2,7 @@
   "name": "ai-browser",
   "version": "1.0.0",
   "description": "AI-powered lightweight browser with predictive hover and intelligent guidance",
-  "main": "src/main/main.js",
+  "main": "build/main.js",
   "homepage": "./",
   "scripts": {
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
@@ -15,9 +15,20 @@
     "package:win": "npm run build && electron-builder --win",
     "package:mac": "npm run build && electron-builder --mac",
     "package:linux": "npm run build && electron-builder --linux",
+    "package:all": "npm run build && electron-builder --win --mac --linux",
+    "dist": "npm run build && electron-builder --publish=never",
+    "dist:win": "npm run build && electron-builder --win --publish=never",
+    "dist:mac": "npm run build && electron-builder --mac --publish=never",
+    "dist:linux": "npm run build && electron-builder --linux --publish=never",
+    "publish": "npm run build && electron-builder --publish=always",
     "test": "jest",
     "lint": "eslint src --ext .ts,.tsx",
-    "clean": "rimraf build dist release"
+    "clean": "rimraf build dist release",
+    "clean:build": "rimraf build",
+    "clean:dist": "rimraf dist",
+    "clean:release": "rimraf release",
+    "prebuild": "npm run clean:build",
+    "prepackage": "npm run clean:release"
   },
   "keywords": ["browser", "ai", "playwright", "electron", "automation"],
   "author": "Your Name",
@@ -49,23 +60,6 @@
     "jest": "^29.0.0"
   },
   "build": {
-    "appId": "com.yourorg.ai-browser",
-    "productName": "AI Browser",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "build/**/*",
-      "package.json"
-    ],
-    "win": {
-      "target": "dir"
-    },
-    "mac": {
-      "target": "dir"
-    },
-    "linux": {
-      "target": "dir"
-    }
+    "extends": "./electron-builder.config.js"
   }
 }
