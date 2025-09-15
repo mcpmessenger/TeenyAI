@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#1976d2" stroke="#1565c0" stroke-width="8"/>
+  
+  <!-- Speech bubble -->
+  <path d="M120 180 C120 150, 150 120, 180 120 L340 120 C370 120, 400 150, 400 180 L400 280 C400 310, 370 340, 340 340 L200 340 L160 380 L160 340 C130 340, 120 310, 120 280 Z" fill="white" stroke="#e0e0e0" stroke-width="4"/>
+  
+  <!-- Question mark -->
+  <g fill="#1976d2">
+    <!-- Question mark curve -->
+    <path d="M220 200 C220 180, 240 160, 260 160 C280 160, 300 180, 300 200 C300 220, 280 230, 270 240 L270 260" stroke="#1976d2" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <!-- Question mark dot -->
+    <circle cx="270" cy="290" r="8"/>
+  </g>
+  
+  <!-- Hand pointer -->
+  <g transform="translate(320, 320)" fill="#1976d2">
+    <path d="M0 20 C0 15, 5 10, 10 10 C15 10, 20 15, 20 20 L20 40 L25 40 L25 15 C25 10, 30 5, 35 5 C40 5, 45 10, 45 15 L45 40 L50 40 L50 10 C50 5, 55 0, 60 0 C65 0, 70 5, 70 10 L70 40 L75 40 L75 15 C75 10, 80 5, 85 5 C90 5, 95 10, 95 15 L95 60 C95 80, 80 95, 60 95 L40 95 C20 95, 5 80, 5 60 L5 20 Z"/>
+  </g>
+  
+  <!-- Sparkle effects -->
+  <g fill="white" opacity="0.8">
+    <circle cx="150" cy="150" r="4"/>
+    <circle cx="380" cy="140" r="3"/>
+    <circle cx="140" cy="380" r="3"/>
+    <circle cx="390" cy="390" r="4"/>
+  </g>
+</svg>

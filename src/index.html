@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Browser - Intelligent Web Navigation</title>
+  <meta name="description" content="AI-powered browser with predictive hover and intelligent guidance">
+  <link rel="icon" type="image/svg+xml" href="../assets/icon.svg">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #ffffff;
+      overflow: hidden;
+    }
+    
+    /* Loading screen */
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1976d2, #1565c0);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      z-index: 9999;
+    }
+    
+    #loading .logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite;
+    }
+    
+    #loading .title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    #loading .subtitle {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <svg class="logo" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="256" cy="256" r="240" fill="white" opacity="0.2"/>
+      <path d="M120 180 C120 150, 150 120, 180 120 L340 120 C370 120, 400 150, 400 180 L400 280 C400 310, 370 340, 340 340 L200 340 L160 380 L160 340 C130 340, 120 310, 120 280 Z" fill="white"/>
+      <path d="M220 200 C220 180, 240 160, 260 160 C280 160, 300 180, 300 200 C300 220, 280 230, 270 240 L270 260" stroke="#1976d2" stroke-width="12" stroke-linecap="round" fill="none"/>
+      <circle cx="270" cy="290" r="8" fill="#1976d2"/>
+    </svg>
+    <div class="title">AI Browser</div>
+    <div class="subtitle">Intelligent Web Navigation</div>
+  </div>
+  
+  <div id="root"></div>
+  <script type="module" src="./renderer/index.tsx"></script>
+  
+  <script>
+    // Hide loading screen when app loads
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const loading = document.getElementById('loading');
+        if (loading) {
+          loading.style.opacity = '0';
+          loading.style.transition = 'opacity 0.5s ease-out';
+          setTimeout(() => loading.remove(), 500);
+        }
+      }, 1500);
+    });
+  </script>
+</body>
+</html>
