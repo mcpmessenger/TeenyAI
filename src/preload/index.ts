@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // External browser functionality
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  updateApiKey: (apiKey: string) => ipcRenderer.invoke('update-api-key', apiKey),
   
   // Navigation
   navigateTo: (url: string) => ipcRenderer.invoke('navigate-to', url),
@@ -79,6 +80,8 @@ declare global {
       onLoadError: (callback: (error: string) => void) => void;
       onLoadingStarted: (callback: () => void) => void;
       onLoadingFinished: (callback: () => void) => void;
+      openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+      updateApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
     };
   }
 }

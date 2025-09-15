@@ -1,7 +1,7 @@
 const { app, BrowserWindow, BrowserView, ipcMain, Menu } = require('electron');
 const { join } = require('path');
 const { isDev } = require('./utils.js');
-const { getAIService } = require('../backend/ai-service.js');
+const { getAIService, updateAIServiceApiKey } = require('../backend/ai-service.js');
 
 let mainWindow = null;
 let webView = null; // BrowserView for real browser
@@ -448,6 +448,19 @@ ipcMain.handle('open-external', async (event, url) => {
     return { success: true };
   } catch (error) {
     console.error('❌ Failed to open external URL:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle API key updates from renderer
+ipcMain.handle('update-api-key', async (event, apiKey) => {
+  console.log('🔑 Updating API key from renderer');
+  try {
+    updateAIServiceApiKey(apiKey);
+    console.log('✅ API key updated successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Failed to update API key:', error);
     return { success: false, error: error.message };
   }
 });

@@ -10,6 +10,8 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
   onClose
 }) => {
   const [activeSection, setActiveSection] = useState<string>('common');
+  const [apiKey, setApiKey] = useState<string>('');
+  const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
   const troubleshootingData = {
     common: {
@@ -58,12 +60,12 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
       ]
     },
     api: {
-      title: 'API Issues',
+      title: 'API Configuration',
       items: [
         {
-          issue: 'OpenAI API key invalid',
-          solution: 'Get a valid API key from OpenAI and add it to your .env file',
-          code: 'OPENAI_API_KEY=sk-...'
+          issue: 'OpenAI API key setup',
+          solution: 'Enter your OpenAI API key below to enable AI features',
+          code: null
         },
         {
           issue: 'Rate limiting errors',
@@ -84,6 +86,50 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
       console.log('Copied to clipboard:', text);
     });
   };
+
+  const handleApiKeySubmit = async () => {
+    if (!apiKey.trim()) return;
+    
+    setApiKeyStatus('testing');
+    
+    try {
+      // Update the API key in the main process
+      const updateResponse = await window.electronAPI?.updateApiKey(apiKey);
+      
+      if (updateResponse && updateResponse.success) {
+        // Test the API key by making a simple request
+        const response = await window.electronAPI?.sendAIQuery('Test connection', 'Testing API key');
+        
+        if (response && !response.error) {
+          setApiKeyStatus('success');
+          // Store the API key (in a real app, you'd want to encrypt this)
+          localStorage.setItem('openai_api_key', apiKey);
+          console.log('✅ API key saved and tested successfully');
+        } else {
+          setApiKeyStatus('error');
+          console.error('❌ API key test failed');
+        }
+      } else {
+        setApiKeyStatus('error');
+        console.error('❌ Failed to update API key');
+      }
+    } catch (error) {
+      setApiKeyStatus('error');
+      console.error('❌ API key test error:', error);
+    }
+  };
+
+  const loadStoredApiKey = () => {
+    const stored = localStorage.getItem('openai_api_key');
+    if (stored) {
+      setApiKey(stored);
+    }
+  };
+
+  // Load stored API key on component mount
+  React.useEffect(() => {
+    loadStoredApiKey();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -109,6 +155,57 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
 
         <div className="troubleshooting-body">
           <h4>{troubleshootingData[activeSection as keyof typeof troubleshootingData].title}</h4>
+          
+          {/* API Key Configuration Section */}
+          {activeSection === 'api' && (
+            <div className="api-key-config">
+              <div className="api-key-form">
+                <label htmlFor="api-key-input">
+                  <strong>OpenAI API Key:</strong>
+                </label>
+                <div className="api-key-input-group">
+                  <input
+                    id="api-key-input"
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="Enter your OpenAI API key (sk-...)"
+                    className="api-key-input"
+                  />
+                  <button
+                    onClick={handleApiKeySubmit}
+                    disabled={!apiKey.trim() || apiKeyStatus === 'testing'}
+                    className={`api-key-button ${apiKeyStatus}`}
+                  >
+                    {apiKeyStatus === 'testing' ? 'Testing...' : 
+                     apiKeyStatus === 'success' ? '✅ Saved' :
+                     apiKeyStatus === 'error' ? '❌ Error' : 'Save & Test'}
+                  </button>
+                </div>
+                {apiKeyStatus === 'success' && (
+                  <div className="api-key-success">
+                    ✅ API key saved and tested successfully! AI features are now enabled.
+                  </div>
+                )}
+                {apiKeyStatus === 'error' && (
+                  <div className="api-key-error">
+                    ❌ API key test failed. Please check your key and try again.
+                  </div>
+                )}
+              </div>
+              
+              <div className="api-key-help">
+                <h5>How to get your API key:</h5>
+                <ol>
+                  <li>Go to <a href="https://platform.openai.com/" target="_blank" rel="noopener noreferrer">OpenAI Platform</a></li>
+                  <li>Sign up or log in to your account</li>
+                  <li>Navigate to API Keys section</li>
+                  <li>Create a new API key</li>
+                  <li>Copy the key (starts with sk-) and paste it above</li>
+                </ol>
+              </div>
+            </div>
+          )}
           
           {troubleshootingData[activeSection as keyof typeof troubleshootingData].items.map((item, index) => (
             <div key={index} className="troubleshooting-item">
