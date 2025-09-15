@@ -57,6 +57,11 @@ ipcMain.handle('reload', async () => {
 console.log('✅ All IPC handlers registered successfully');
 
 const createWindow = () => {
+  const preloadPath = isDev ? join(__dirname, '../../build/preload.js') : join(__dirname, 'preload.js');
+  console.log('🔧 Preload path:', preloadPath);
+  console.log('🔧 __dirname:', __dirname);
+  console.log('🔧 isDev:', isDev);
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -65,12 +70,11 @@ const createWindow = () => {
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,
-          preload: join(__dirname, 'preload.js'),
+          preload: preloadPath,
           webSecurity: true,
           allowRunningInsecureContent: false,
           experimentalFeatures: false,
-          sandbox: false,
-          additionalArguments: ['--disable-web-security', '--disable-features=VizDisplayCompositor']
+          sandbox: false
         },
     titleBarStyle: 'default',
     show: false
@@ -78,7 +82,7 @@ const createWindow = () => {
 
   // Load the app
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3004');
+    mainWindow.loadURL('http://localhost:3000');
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(join(__dirname, 'index.html'));
@@ -98,9 +102,9 @@ const createWindow = () => {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false,
-      allowRunningInsecureContent: true,
-      experimentalFeatures: true
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false
     }
   });
 
@@ -120,24 +124,78 @@ const createWindow = () => {
   console.log('🔧 Loading initial page: https://www.google.com');
   
   // Listen for BrowserView events
+  let loadingTimeout = null;
+  const LOADING_TIMEOUT_MS = 10000; // 10 seconds timeout
+
   webView.webContents.on('did-finish-load', () => {
     console.log('✅ BrowserView finished loading:', webView.webContents.getURL());
+    // Clear any existing timeout
+    if (loadingTimeout) {
+      clearTimeout(loadingTimeout);
+      loadingTimeout = null;
+    }
     // Send URL update to renderer
     mainWindow.webContents.send('url-updated', webView.webContents.getURL());
+    mainWindow.webContents.send('loading-finished');
   });
 
-  webView.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-    console.error('❌ BrowserView failed to load:', errorDescription);
-    mainWindow.webContents.send('load-error', errorDescription);
+  webView.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('❌ BrowserView failed to load:', errorDescription, 'Error Code:', errorCode, 'URL:', validatedURL);
+    // Clear any existing timeout
+    if (loadingTimeout) {
+      clearTimeout(loadingTimeout);
+      loadingTimeout = null;
+    }
+    
+    // Provide more specific error messages based on error codes
+    let userFriendlyMessage = errorDescription;
+    if (errorCode === -3) {
+      userFriendlyMessage = 'This page cannot be displayed due to security restrictions (X-Frame-Options or CSP)';
+    } else if (errorCode === -2) {
+      userFriendlyMessage = 'Network error - please check your internet connection';
+    } else if (errorCode === -1) {
+      userFriendlyMessage = 'Invalid URL or page not found';
+    }
+    
+    mainWindow.webContents.send('load-error', {
+      errorCode,
+      errorDescription: userFriendlyMessage,
+      url: validatedURL
+    });
   });
 
   webView.webContents.on('did-start-loading', () => {
     console.log('🔄 BrowserView started loading');
     mainWindow.webContents.send('loading-started');
+    
+    // Set a timeout to handle cases where loading never completes
+    if (loadingTimeout) {
+      clearTimeout(loadingTimeout);
+    }
+    loadingTimeout = setTimeout(() => {
+      console.warn('⚠️ Loading timeout reached');
+      mainWindow.webContents.send('load-error', {
+        errorCode: -999,
+        errorDescription: 'Page loading timed out. The site may be slow or unresponsive.',
+        url: webView.webContents.getURL()
+      });
+    }, LOADING_TIMEOUT_MS);
   });
 
   webView.webContents.on('page-title-updated', (event, title) => {
     console.log('📄 BrowserView page title:', title);
+    mainWindow.webContents.send('title-updated', title);
+  });
+
+  // Handle navigation events
+  webView.webContents.on('will-navigate', (event, navigationUrl) => {
+    console.log('🧭 BrowserView will navigate to:', navigationUrl);
+    mainWindow.webContents.send('navigation-started', navigationUrl);
+  });
+
+  webView.webContents.on('did-navigate', (event, navigationUrl) => {
+    console.log('🧭 BrowserView navigated to:', navigationUrl);
+    mainWindow.webContents.send('navigation-completed', navigationUrl);
   });
 
   // Check if BrowserView is working
@@ -154,6 +212,11 @@ const createWindow = () => {
 
   // Handle window closed
   mainWindow.on('closed', () => {
+    // Clean up loading timeout
+    if (loadingTimeout) {
+      clearTimeout(loadingTimeout);
+      loadingTimeout = null;
+    }
     mainWindow = null;
     webView = null;
   });
@@ -250,11 +313,6 @@ ipcMain.handle('get-preview', async (event, elementId: string) => {
   return { mediaUrl: '', type: 'gif' };
 });
 
-ipcMain.handle('navigate-to', async (event, url: string) => {
-  console.log('Navigation requested to:', url);
-  // The webview will handle the actual navigation
-  return { success: true };
-});
 
 ipcMain.handle('set-theme', async (event, theme: 'light' | 'dark') => {
   console.log('Theme change requested:', theme);

@@ -57,6 +57,12 @@ const App: React.FC = () => {
         console.log('🔄 Loading started in BrowserView');
         setLoading(true);
       });
+
+      // Temporarily commented out until preload script issue is resolved
+      // window.electronAPI.onLoadingFinished(() => {
+      //   console.log('✅ Loading finished in BrowserView');
+      //   setLoading(false);
+      // });
     }
   }, []);
 
@@ -68,7 +74,8 @@ const App: React.FC = () => {
         if (result.success) {
           console.log('✅ Navigation successful:', result.url);
           setCurrentUrl(result.url || url);
-          setLoading(false);
+          // Set loading to false after a short delay to allow content to load
+          setTimeout(() => setLoading(false), 1000);
         } else {
           console.error('❌ Navigation failed:', result.error);
           setLoading(false);

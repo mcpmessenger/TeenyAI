@@ -42,6 +42,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   onLoadingStarted: (callback: () => void) => {
     ipcRenderer.on('loading-started', () => callback());
+  },
+  
+  onLoadingFinished: (callback: () => void) => {
+    ipcRenderer.on('loading-finished', () => callback());
   }
 });
 
@@ -63,6 +67,7 @@ declare global {
       onUrlUpdated: (callback: (url: string) => void) => void;
       onLoadError: (callback: (error: string) => void) => void;
       onLoadingStarted: (callback: () => void) => void;
+      onLoadingFinished: (callback: () => void) => void;
     };
   }
 }
