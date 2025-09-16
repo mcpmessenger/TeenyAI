@@ -2,6 +2,12 @@
 
 This document tracks known issues with TeenyAI and their solutions. Please check here before reporting bugs.
 
+## 📋 Quick Reference
+
+- [WebView Truncation Issue](./KNOWN_ISSUES/WebView_Truncation_Issue.md) - **RESOLVED** ✅
+- [API Configuration Issues](#-api-configuration-issues) - Known Issue 🔴
+- [Build System Issues](#-build-system-issues) - Known Issue 🔴
+
 ## 🔑 API Configuration Issues
 
 ### Issue: API Key Validation Fails Despite Valid Key
@@ -197,6 +203,65 @@ app.commandLine.appendSwitch('--disable-gpu-compositing');
 
 #### Workaround
 The application continues to work despite these errors. They're mostly cosmetic.
+
+---
+
+## 🎯 UI Positioning Issues
+
+### Issue: Console Panel Index/Positioning Problems
+**Status:** ✅ Fixed  
+**Last Updated:** September 15, 2025  
+**Affects:** Console panel visibility and layout
+
+#### Symptoms
+- Console panel may not appear in correct z-index layer
+- Page content may not properly resize when console is toggled
+- Console panel might overlay content instead of resizing it
+- Inconsistent positioning behavior across different screen sizes
+
+#### Root Causes
+1. **Z-Index Conflicts**: Console panel z-index may conflict with other UI elements
+2. **CSS Positioning**: Fixed positioning may not work correctly in all contexts
+3. **Layout Calculations**: Height calculations may not account for all UI elements
+4. **Animation Timing**: CSS transitions may cause layout shifts
+
+#### Solutions
+
+##### ✅ **Solution 1: Check Console Toggle**
+- Click the console button in the navigation bar (terminal icon)
+- Ensure the console panel slides up from the bottom
+- Verify the main content area resizes to accommodate the console
+
+##### ✅ **Solution 2: Force Console State Reset**
+```javascript
+// In browser console
+localStorage.removeItem('consoleOpen');
+location.reload();
+```
+
+##### ✅ **Solution 3: Manual CSS Override (Temporary)**
+```css
+/* Add to browser dev tools if needed */
+.console-panel {
+  z-index: 9999 !important;
+  position: fixed !important;
+  bottom: 0 !important;
+}
+```
+
+#### Solution Applied
+- ✅ **ROOT CAUSE FIXED**: Removed BrowserView from main process, now using WebView tag only
+- ✅ Set all overlay elements to maximum z-index: 2147483647 (32-bit integer max)
+- ✅ Added CSS isolation and contain properties to WebView to prevent layering conflicts
+- ✅ Set webview content to z-index: 1 with isolation: isolate
+- ✅ Added contain: layout style paint to prevent WebView from overriding overlays
+- ✅ Console panel now properly resizes content instead of overlaying
+- ✅ **FULLY RESOLVED**: Console, AI assistant, and tool popups now render above web content
+
+#### Workaround
+- Toggle the console panel off and on again
+- Refresh the page if positioning seems incorrect
+- Use browser dev tools to manually adjust positioning if needed
 
 ---
 
