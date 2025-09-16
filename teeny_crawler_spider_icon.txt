@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Teeny Crawler — Spider icon (transparent background) -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Teeny Crawler spider icon</title>
+  <desc id="desc">Minimal stylized spider icon for Teeny Crawler with transparent background</desc>
+
+  <!-- Invisible background (transparent) -->
+  <rect width="100%" height="100%" fill="none"/>
+
+  <!-- Legs (left and right mirrored) -->
+  <g fill="none" stroke="#0b0b0b" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left top legs -->
+    <path d="M190 150 C150 120, 120 120, 80 140"/>
+    <path d="M200 190 C150 170, 120 180, 90 210"/>
+    <!-- Left bottom legs -->
+    <path d="M220 260 C170 260, 140 290, 110 320"/>
+    <path d="M230 310 C190 310, 160 340, 120 360"/>
+
+    <!-- Right top legs (mirrored) -->
+    <path d="M322 150 C362 120, 392 120, 432 140"/>
+    <path d="M312 190 C362 170, 392 180, 422 210"/>
+    <!-- Right bottom legs (mirrored) -->
+    <path d="M292 260 C342 260, 372 290, 402 320"/>
+    <path d="M282 310 C322 310, 352 340, 392 360"/>
+  </g>
+
+  <!-- Body and head -->
+  <g fill="#0b0b0b">
+    <!-- Abdomen -->
+    <ellipse cx="256" cy="320" rx="78" ry="58" />
+    <!-- Thorax (middle) -->
+    <ellipse cx="256" cy="230" rx="54" ry="44" />
+    <!-- Head -->
+    <circle cx="256" cy="180" r="22" />
+  </g>
+
+  <!-- Eyes (subtle) -->
+  <g fill="#ffffff" opacity="0.95">
+    <circle cx="248" cy="176" r="4" />
+    <circle cx="264" cy="176" r="4" />
+  </g>
+
+  <!-- Stylized subtle highlight on abdomen -->
+  <path d="M222 300 C236 284, 276 284, 290 300" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.06"/>
+
+</svg>

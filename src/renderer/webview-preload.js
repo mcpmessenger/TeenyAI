@@ -22,19 +22,93 @@ contextBridge.exposeInMainWorld('webviewAPI', {
   
   // Page analysis for AI features
   getPageContent: () => {
-    return {
-      title: document.title,
-      url: window.location.href,
-      text: document.body.innerText,
-      links: Array.from(document.querySelectorAll('a')).map(a => ({
-        text: a.textContent,
-        href: a.href
-      })),
-      buttons: Array.from(document.querySelectorAll('button')).map(b => ({
-        text: b.textContent,
-        type: b.type
-      }))
-    };
+    try {
+      // Extract comprehensive page content
+      const content = {
+        title: document.title || 'Untitled Page',
+        url: window.location.href,
+        text: document.body ? document.body.innerText : '',
+        links: [],
+        buttons: [],
+        forms: [],
+        headings: [],
+        images: []
+      };
+
+      // Extract links
+      try {
+        content.links = Array.from(document.querySelectorAll('a')).map(a => ({
+          text: a.textContent?.trim() || '',
+          href: a.href || '',
+          title: a.title || ''
+        })).filter(link => link.text && link.href);
+      } catch (e) {
+        console.warn('Error extracting links:', e);
+      }
+
+      // Extract buttons
+      try {
+        content.buttons = Array.from(document.querySelectorAll('button, input[type="button"], input[type="submit"]')).map(b => ({
+          text: b.textContent?.trim() || b.value || '',
+          type: b.type || 'button',
+          id: b.id || '',
+          className: b.className || ''
+        })).filter(button => button.text);
+      } catch (e) {
+        console.warn('Error extracting buttons:', e);
+      }
+
+      // Extract forms
+      try {
+        content.forms = Array.from(document.querySelectorAll('form')).map(form => ({
+          action: form.action || '',
+          method: form.method || 'get',
+          fields: Array.from(form.querySelectorAll('input, select, textarea')).map(field => ({
+            type: field.type || field.tagName.toLowerCase(),
+            name: field.name || '',
+            placeholder: field.placeholder || '',
+            required: field.required || false
+          }))
+        }));
+      } catch (e) {
+        console.warn('Error extracting forms:', e);
+      }
+
+      // Extract headings
+      try {
+        content.headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).map(h => ({
+          level: parseInt(h.tagName.charAt(1)),
+          text: h.textContent?.trim() || ''
+        })).filter(h => h.text);
+      } catch (e) {
+        console.warn('Error extracting headings:', e);
+      }
+
+      // Extract images
+      try {
+        content.images = Array.from(document.querySelectorAll('img')).map(img => ({
+          src: img.src || '',
+          alt: img.alt || '',
+          title: img.title || ''
+        })).filter(img => img.src);
+      } catch (e) {
+        console.warn('Error extracting images:', e);
+      }
+
+      return content;
+    } catch (error) {
+      console.error('Error in getPageContent:', error);
+      return {
+        title: 'Error extracting content',
+        url: window.location.href,
+        text: 'Failed to extract page content',
+        links: [],
+        buttons: [],
+        forms: [],
+        headings: [],
+        images: []
+      };
+    }
   }
 });
 

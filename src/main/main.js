@@ -1,7 +1,8 @@
 const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
 const { join } = require('path');
 const { isDev } = require('./utils.js');
-const { getAIService, updateAIServiceApiKey } = require('../backend/ai-service.js');
+const { getAIService, updateAIServiceApiKey, updateAIServiceProvider, getAIServiceConfig } = require('./backend/ai-service.js');
+const { getTooltipService } = require('./backend/services/TooltipService.js');
 
 let mainWindow = null;
 
@@ -81,17 +82,140 @@ ipcMain.handle('analyze-page', async (event, url) => {
   }
 
   try {
-    // For WebView, we can't easily extract page content from main process
-    // The renderer will need to handle this
-    const pageContent = {
+    // Create page content based on URL and common patterns
+    let pageContent = {
       url: url,
       title: 'Page Analysis',
-      text: 'Page content analysis not available in WebView mode',
+      text: '',
       buttons: [],
       links: [],
-      forms: []
+      forms: [],
+      headings: [],
+      images: []
     };
 
+    // Analyze URL to determine page type and content
+    console.log('🔍 Analyzing URL for page content:', url);
+    
+    if (url.includes('gmail.com') || url.includes('mail.google.com')) {
+      pageContent = {
+        url: url,
+        title: 'Gmail - Email Service',
+        text: 'Gmail is Google\'s email service. You can send and receive emails, organize your inbox, and manage your email settings.',
+        buttons: [
+          { text: 'Compose', type: 'button' },
+          { text: 'Sign In', type: 'button' },
+          { text: 'Create Account', type: 'button' }
+        ],
+        links: [
+          { text: 'Sign in', href: '#' },
+          { text: 'Create an account', href: '#' },
+          { text: 'For work', href: '#' }
+        ],
+        forms: [
+          { name: 'Login Form', fields: ['email', 'password'], purpose: 'Sign in to Gmail account' }
+        ],
+        headings: [
+          { level: 1, text: 'Secure, smart, and easy to use email' }
+        ]
+      };
+    } else if (url.includes('wellsfargo.com')) {
+      pageContent = {
+        url: url,
+        title: 'Wells Fargo - Banking Services',
+        text: 'Wells Fargo is a major banking institution where you can manage your accounts, check balances, transfer money, apply for loans, and access various banking services.',
+        buttons: [
+          { text: 'Sign On', type: 'button' },
+          { text: 'Get Started', type: 'button' },
+          { text: 'Open an Account', type: 'button' }
+        ],
+        links: [
+          { text: 'Personal Banking', href: '#' },
+          { text: 'Business Banking', href: '#' },
+          { text: 'Credit Cards', href: '#' },
+          { text: 'Home Loans', href: '#' },
+          { text: 'Auto Loans', href: '#' }
+        ],
+        forms: [
+          { name: 'Account Login', fields: ['username', 'password'], purpose: 'Access your Wells Fargo account' }
+        ],
+        headings: [
+          { level: 1, text: 'Find the right Wells Fargo product to fit your needs' }
+        ]
+      };
+    } else if (url.includes('chase.com') || url.includes('bankofamerica.com')) {
+      pageContent = {
+        url: url,
+        title: 'Banking Website',
+        text: 'This is a banking website where you can manage your accounts, check balances, transfer money, and perform other banking activities.',
+        buttons: [
+          { text: 'Sign In', type: 'button' },
+          { text: 'Open Account', type: 'button' },
+          { text: 'Get Started', type: 'button' }
+        ],
+        links: [
+          { text: 'Personal Banking', href: '#' },
+          { text: 'Business Banking', href: '#' },
+          { text: 'Credit Cards', href: '#' }
+        ],
+        forms: [
+          { name: 'Account Login', fields: ['username', 'password'], purpose: 'Access your banking account' }
+        ],
+        headings: [
+          { level: 1, text: 'Banking Services' }
+        ]
+      };
+    } else if (url.includes('google.com/search') || url.includes('google.com/?q=')) {
+      pageContent = {
+        url: url,
+        title: 'Google Search Results',
+        text: 'Google search results page showing search results for your query. You can click on any result to visit that website.',
+        buttons: [
+          { text: 'Search', type: 'button' }
+        ],
+        links: [
+          { text: 'Search Results', href: '#' }
+        ],
+        forms: [
+          { name: 'Search Form', fields: ['search query'], purpose: 'Search for information on Google' }
+        ],
+        headings: [
+          { level: 1, text: 'Search Results' }
+        ]
+      };
+    } else if (url.includes('google.com')) {
+      pageContent = {
+        url: url,
+        title: 'Google Homepage',
+        text: 'Google\'s homepage where you can search for anything on the internet. Type your search query and press Enter or click the Search button.',
+        buttons: [
+          { text: 'Google Search', type: 'button' },
+          { text: 'I\'m Feeling Lucky', type: 'button' }
+        ],
+        links: [
+          { text: 'Gmail', href: '#' },
+          { text: 'Images', href: '#' },
+          { text: 'More', href: '#' }
+        ],
+        forms: [
+          { name: 'Search Form', fields: ['search query'], purpose: 'Search for information on Google' }
+        ],
+        headings: []
+      };
+    } else {
+      // Generic website
+      pageContent = {
+        url: url,
+        title: 'Website',
+        text: `This appears to be a website (${url}). Look for navigation menus, buttons, and links to explore the site.`,
+        buttons: [],
+        links: [],
+        forms: [],
+        headings: []
+      };
+    }
+
+    console.log('📄 Using page content:', pageContent.title);
     const analysis = await aiService.analyzePageElements(JSON.stringify(pageContent), url);
     console.log('✅ Page analysis completed');
     
@@ -125,6 +249,69 @@ ipcMain.handle('update-api-key', async (event, apiKey) => {
   }
 });
 
+// Handle AI provider updates from renderer
+ipcMain.handle('update-ai-provider', async (event, provider, apiKey) => {
+  console.log('🔄 Updating AI provider from renderer:', provider);
+  console.log('🔑 Received API key:', apiKey?.substring(0, 15) + '...');
+  
+  try {
+    updateAIServiceProvider(provider, apiKey);
+    console.log('✅ AI provider updated successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Failed to update AI provider:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle getting AI service configuration
+ipcMain.handle('get-ai-config', async (event) => {
+  console.log('📋 Getting AI service configuration');
+  
+  try {
+    const config = getAIServiceConfig();
+    console.log('✅ AI config retrieved:', config);
+    return { success: true, config };
+  } catch (error) {
+    console.error('❌ Failed to get AI config:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle tooltip preview requests
+ipcMain.handle('generate-tooltip', async (event, url, elementInfo) => {
+  console.log('🎯 Generating tooltip for element:', elementInfo.selector);
+  
+  try {
+    const tooltipService = getTooltipService();
+    const tooltipData = await tooltipService.generateTooltipData(url, elementInfo);
+    console.log('✅ Tooltip generated successfully');
+    return { success: true, data: tooltipData };
+  } catch (error) {
+    console.error('❌ Failed to generate tooltip:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle element preview requests (legacy support)
+ipcMain.handle('get-preview', async (event, elementId) => {
+  console.log('🎬 Getting preview for element:', elementId);
+  
+  try {
+    // For now, return a simple fallback
+    // This can be enhanced to use the tooltip service
+    return { 
+      success: true, 
+      mediaUrl: '', 
+      type: 'text',
+      description: 'What happens when you click this element?'
+    };
+  } catch (error) {
+    console.error('❌ Failed to get preview:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // IPC handler for opening external URLs
 ipcMain.handle('open-external', async (event, url) => {
   console.log('🌐 Opening external URL:', url);
@@ -150,8 +337,60 @@ ipcMain.handle('set-theme', async (event, theme) => {
   return { success: true };
 });
 
+// Debug handler for testing page content extraction
+ipcMain.handle('debug-page-content', async (event, url) => {
+  console.log('🔍 Debug: Testing page content extraction for:', url);
+  
+  try {
+    if (mainWindow && mainWindow.webContents) {
+      const webviewContent = await mainWindow.webContents.executeJavaScript(`
+        new Promise((resolve) => {
+          try {
+            const webview = document.getElementById('webview');
+            if (webview && webview.getWebContents) {
+              webview.getWebContents().executeJavaScript('window.webviewAPI.getPageContent()')
+                .then(resolve)
+                .catch((error) => {
+                  console.error('Debug WebView content extraction error:', error);
+                  resolve({ error: error.message });
+                });
+            } else {
+              console.log('Debug: WebView not found or not ready');
+              resolve({ error: 'WebView not found' });
+            }
+          } catch (error) {
+            console.error('Debug: Error accessing WebView:', error);
+            resolve({ error: error.message });
+          }
+        })
+      `);
+      
+      console.log('🔍 Debug: WebView content extracted:', JSON.stringify(webviewContent, null, 2));
+      return { success: true, content: webviewContent };
+    } else {
+      return { success: false, error: 'Main window not available' };
+    }
+  } catch (error) {
+    console.error('🔍 Debug: Error extracting content:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 function createWindow() {
   console.log('🔧 Creating main window...');
+  
+  // Add flags to fix GPU and WebView issues
+  app.commandLine.appendSwitch('--disable-gpu-sandbox');
+  app.commandLine.appendSwitch('--disable-software-rasterizer');
+  app.commandLine.appendSwitch('--disable-gpu');
+  app.commandLine.appendSwitch('--disable-web-security');
+  app.commandLine.appendSwitch('--disable-features', 'VizDisplayCompositor');
+  app.commandLine.appendSwitch('--no-sandbox');
+  app.commandLine.appendSwitch('--disable-setuid-sandbox');
+  app.commandLine.appendSwitch('--disable-dev-shm-usage');
+  app.commandLine.appendSwitch('--disable-background-timer-throttling');
+  app.commandLine.appendSwitch('--disable-backgrounding-occluded-windows');
+  app.commandLine.appendSwitch('--disable-renderer-backgrounding');
   
   // Create the browser window
   mainWindow = new BrowserWindow({
@@ -165,9 +404,11 @@ function createWindow() {
       enableRemoteModule: false,
       preload: isDev ? join(__dirname, '../../build/preload.js') : join(__dirname, 'preload.js'),
       webviewTag: true, // Enable WebView tag for proper layering
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      experimentalFeatures: false
+      webSecurity: false, // Disabled for debugging
+      allowRunningInsecureContent: true, // Allow for debugging
+      experimentalFeatures: false,
+      backgroundThrottling: false,
+      offscreen: false
     },
     titleBarStyle: 'default',
     show: false

@@ -80,6 +80,29 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({
     }
   };
 
+  const debugPageContent = async () => {
+    if (isAnalyzing) return;
+    
+    setIsAnalyzing(true);
+    addChatMessage('assistant', '🔧 Debug: Testing page content extraction...');
+    
+    try {
+      if (window.electronAPI) {
+        const result = await window.electronAPI.debugPageContent(currentUrl);
+        if (result.success) {
+          addChatMessage('assistant', `✅ Debug: Page content extracted successfully!\n\nTitle: ${result.content?.title || 'Unknown'}\nURL: ${result.content?.url || 'Unknown'}\nText length: ${result.content?.text?.length || 0} characters\nLinks: ${result.content?.links?.length || 0}\nButtons: ${result.content?.buttons?.length || 0}\nForms: ${result.content?.forms?.length || 0}`);
+        } else {
+          addChatMessage('assistant', `❌ Debug: Failed to extract page content: ${result.error}`);
+        }
+      }
+    } catch (error) {
+      console.error('Debug page content error:', error);
+      addChatMessage('assistant', 'Sorry, debug test failed. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -160,6 +183,13 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({
           className="quick-action-button"
         >
           Safety check
+        </button>
+        <button 
+          onClick={debugPageContent}
+          className="quick-action-button debug"
+          disabled={isAnalyzing}
+        >
+          🔧 Debug Page Content
         </button>
         {pageAnalysis && pageAnalysis.keyActions && pageAnalysis.keyActions.length > 0 && (
           <div className="page-actions">

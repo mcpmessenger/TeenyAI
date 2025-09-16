@@ -12,6 +12,8 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
   const [activeSection, setActiveSection] = useState<string>('common');
   const [apiKey, setApiKey] = useState<string>('');
   const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [selectedProvider, setSelectedProvider] = useState<string>('openai');
+  const [aiConfig, setAiConfig] = useState<any>(null);
 
   const troubleshootingData = {
     common: {
@@ -21,6 +23,11 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
           issue: 'AI Assistant not responding',
           solution: 'Check your OpenAI API key in the .env file. Make sure you have internet connection.',
           code: 'OPENAI_API_KEY=your_actual_key_here'
+        },
+        {
+          issue: 'API key validation fails despite valid key',
+          solution: 'This is a known issue. Try creating a .env file or restart the application after setting the key.',
+          code: 'echo "OPENAI_API_KEY=your_key" > .env'
         },
         {
           issue: 'Preload script errors',
@@ -63,8 +70,8 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
       title: 'API Configuration',
       items: [
         {
-          issue: 'OpenAI API key setup',
-          solution: 'Enter your OpenAI API key below to enable AI features',
+          issue: 'AI Provider setup',
+          solution: 'Choose your preferred AI provider and enter your API key below to enable AI features',
           code: null
         },
         {
@@ -87,32 +94,83 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
     });
   };
 
+  const validateApiKey = (key: string, provider: string): boolean => {
+    const trimmedKey = key.trim();
+    
+    console.log(`🔍 Validating ${provider} API key:`, {
+      key: trimmedKey.substring(0, 10) + '...',
+      length: trimmedKey.length,
+      startsWithSk: trimmedKey.startsWith('sk-'),
+      startsWithSkProj: trimmedKey.startsWith('sk-proj-'),
+      startsWithSkAnt: trimmedKey.startsWith('sk-ant-')
+    });
+    
+    switch (provider) {
+      case 'openai':
+        // Support both sk- and sk-proj- prefixes for OpenAI keys
+        const isValid = (trimmedKey.startsWith('sk-') || trimmedKey.startsWith('sk-proj-')) && trimmedKey.length >= 20;
+        console.log(`🔍 OpenAI validation result:`, isValid);
+        return isValid;
+      case 'claude':
+        const claudeValid = trimmedKey.startsWith('sk-ant-') && trimmedKey.length >= 30;
+        console.log(`🔍 Claude validation result:`, claudeValid);
+        return claudeValid;
+      case 'gemini':
+        const geminiValid = trimmedKey.length >= 20;
+        console.log(`🔍 Gemini validation result:`, geminiValid);
+        return geminiValid;
+      default:
+        console.log(`🔍 Unknown provider validation result:`, false);
+        return false;
+    }
+  };
+
+  const getApiKeyPlaceholder = (provider: string): string => {
+    switch (provider) {
+      case 'openai':
+        return 'Enter your OpenAI API key (sk-... or sk-proj-...)';
+      case 'claude':
+        return 'Enter your Claude API key (sk-ant-...)';
+      case 'gemini':
+        return 'Enter your Gemini API key';
+      default:
+        return 'Enter your API key';
+    }
+  };
+
+  const getApiKeyHelp = (provider: string): string => {
+    switch (provider) {
+      case 'openai':
+        return 'https://platform.openai.com/';
+      case 'claude':
+        return 'https://console.anthropic.com/';
+      case 'gemini':
+        return 'https://aistudio.google.com/';
+      default:
+        return '';
+    }
+  };
+
   const handleApiKeySubmit = async () => {
     if (!apiKey.trim()) return;
     
-    // Basic validation
     const trimmedKey = apiKey.trim();
-    if (!trimmedKey.startsWith('sk-')) {
+    
+    // Validate API key based on provider
+    if (!validateApiKey(trimmedKey, selectedProvider)) {
       setApiKeyStatus('error');
-      console.error('❌ API key must start with "sk-" or "sk-proj-"');
+      console.error(`❌ Invalid ${selectedProvider} API key format`);
       return;
     }
     
-    // Log the key for debugging (first 10 chars only)
-    console.log('🔑 Testing API key:', trimmedKey.substring(0, 10) + '...');
-    
-    if (trimmedKey.length < 20) {
-      setApiKeyStatus('error');
-      console.error('❌ API key appears to be too short');
-      return;
-    }
+    console.log(`🔑 Testing ${selectedProvider} API key:`, trimmedKey.substring(0, 10) + '...');
     
     setApiKeyStatus('testing');
     
     try {
-      console.log('🔑 Step 1: Updating API key in main process...');
-      // Update the API key in the main process
-      const updateResponse = await window.electronAPI?.updateApiKey(trimmedKey);
+      console.log(`🔑 Step 1: Updating ${selectedProvider} API key in main process...`);
+      // Update the AI provider and API key in the main process
+      const updateResponse = await window.electronAPI?.updateAIProvider(selectedProvider, trimmedKey);
       console.log('🔑 Update response:', updateResponse);
       
       if (updateResponse && updateResponse.success) {
@@ -123,9 +181,12 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
         
         if (response && !response.error) {
           setApiKeyStatus('success');
-          // Store the API key (in a real app, you'd want to encrypt this)
-          localStorage.setItem('openai_api_key', trimmedKey);
+          // Store the API key and provider
+          localStorage.setItem('ai_api_key', trimmedKey);
+          localStorage.setItem('ai_provider', selectedProvider);
           console.log('✅ API key saved and tested successfully');
+          // Reload AI config to reflect changes
+          await loadAIConfig();
         } else {
           setApiKeyStatus('error');
           console.error('❌ API key test failed:', response?.response);
@@ -141,15 +202,28 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
   };
 
   const loadStoredApiKey = () => {
-    const stored = localStorage.getItem('openai_api_key');
+    const stored = localStorage.getItem('ai_api_key');
     if (stored) {
       setApiKey(stored);
     }
   };
 
-  // Load stored API key on component mount
+  const loadAIConfig = async () => {
+    try {
+      const response = await window.electronAPI?.getAIConfig();
+      if (response?.success && response.config) {
+        setAiConfig(response.config);
+        setSelectedProvider(response.config.provider);
+      }
+    } catch (error) {
+      console.error('Failed to load AI config:', error);
+    }
+  };
+
+  // Load stored API key and AI config on component mount
   React.useEffect(() => {
     loadStoredApiKey();
+    loadAIConfig();
   }, []);
 
   if (!isOpen) return null;
@@ -177,12 +251,37 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
         <div className="troubleshooting-body">
           <h4>{troubleshootingData[activeSection as keyof typeof troubleshootingData].title}</h4>
           
-          {/* API Key Configuration Section */}
+          {/* AI Provider Configuration Section */}
           {activeSection === 'api' && (
             <div className="api-key-config">
+              <div className="provider-selection">
+                <label htmlFor="provider-select">
+                  <strong>AI Provider:</strong>
+                </label>
+                <select
+                  id="provider-select"
+                  value={selectedProvider}
+                  onChange={(e) => {
+                    setSelectedProvider(e.target.value);
+                    setApiKeyStatus('idle');
+                  }}
+                  className="provider-select"
+                >
+                  <option value="openai">OpenAI (GPT-3.5/4)</option>
+                  <option value="claude">Claude (Anthropic)</option>
+                  <option value="gemini">Gemini (Google)</option>
+                </select>
+                {aiConfig && (
+                  <div className="current-provider-info">
+                    Current: <strong>{aiConfig.provider}</strong> 
+                    {aiConfig.isConfigured ? ' ✅ Configured' : ' ❌ Not configured'}
+                  </div>
+                )}
+              </div>
+
               <div className="api-key-form">
                 <label htmlFor="api-key-input">
-                  <strong>OpenAI API Key:</strong>
+                  <strong>{selectedProvider.toUpperCase()} API Key:</strong>
                 </label>
                 <div className="api-key-input-group">
                   <input
@@ -190,7 +289,7 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Enter your OpenAI API key (sk-...)"
+                    placeholder={getApiKeyPlaceholder(selectedProvider)}
                     className="api-key-input"
                   />
                   <button
@@ -206,7 +305,8 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
                     onClick={() => {
                       setApiKey('');
                       setApiKeyStatus('idle');
-                      localStorage.removeItem('openai_api_key');
+                      localStorage.removeItem('ai_api_key');
+                      localStorage.removeItem('ai_provider');
                     }}
                     className="api-key-button"
                     style={{ background: '#6b7280', marginLeft: '8px' }}
@@ -216,22 +316,36 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
                 </div>
                 {apiKeyStatus === 'success' && (
                   <div className="api-key-success">
-                    ✅ API key saved and tested successfully! AI features are now enabled.
+                    ✅ {selectedProvider.toUpperCase()} API key saved and tested successfully! AI features are now enabled.
                   </div>
                 )}
                 {apiKeyStatus === 'error' && (
                   <div className="api-key-error">
                     ❌ API key validation failed. Please check:
                     <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-                      <li>Key starts with "sk-" (standard keys) or "sk-proj-" (project keys)</li>
-                      <li>Key is complete (not truncated)</li>
+                      {selectedProvider === 'openai' && (
+                        <>
+                          <li>Key starts with "sk-" (standard keys) or "sk-proj-" (project keys)</li>
+                          <li>Key is complete (not truncated)</li>
+                          <li>Key length is at least 20 characters</li>
+                        </>
+                      )}
+                      {selectedProvider === 'claude' && (
+                        <>
+                          <li>Key starts with "sk-ant-"</li>
+                          <li>Key is complete (not truncated)</li>
+                        </>
+                      )}
+                      {selectedProvider === 'gemini' && (
+                        <>
+                          <li>Key is complete (not truncated)</li>
+                          <li>API is enabled in Google AI Studio</li>
+                        </>
+                      )}
                       <li>Key is valid and active</li>
                       <li>You have internet connection</li>
-                      <li>For project keys: Make sure the project is active</li>
                     </ul>
-                    <strong>Tip:</strong> Copy the key directly from OpenAI platform to avoid extra characters.
-                    <br />
-                    <strong>Note:</strong> Project keys (sk-proj-) may have different permissions than standard keys.
+                    <strong>Tip:</strong> Copy the key directly from the provider platform to avoid extra characters.
                   </div>
                 )}
               </div>
@@ -239,12 +353,24 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
               <div className="api-key-help">
                 <h5>How to get your API key:</h5>
                 <ol>
-                  <li>Go to <a href="https://platform.openai.com/" target="_blank" rel="noopener noreferrer">OpenAI Platform</a></li>
+                  <li>Go to <a href={getApiKeyHelp(selectedProvider)} target="_blank" rel="noopener noreferrer">
+                    {selectedProvider === 'openai' ? 'OpenAI Platform' : 
+                     selectedProvider === 'claude' ? 'Anthropic Console' : 
+                     'Google AI Studio'}
+                  </a></li>
                   <li>Sign up or log in to your account</li>
                   <li>Navigate to API Keys section</li>
                   <li>Create a new API key</li>
-                  <li>Copy the key (starts with sk-) and paste it above</li>
+                  <li>Copy the key and paste it above</li>
                 </ol>
+                <div className="provider-info">
+                  <h6>Provider Information:</h6>
+                  <ul>
+                    <li><strong>OpenAI:</strong> Most popular, good for general tasks</li>
+                    <li><strong>Claude:</strong> Great for analysis and reasoning</li>
+                    <li><strong>Gemini:</strong> Fast and cost-effective</li>
+                  </ul>
+                </div>
               </div>
             </div>
           )}
@@ -278,6 +404,7 @@ export const TroubleshootingPanel: React.FC<TroubleshootingPanelProps> = ({
 
       <div className="troubleshooting-footer">
         <p>💡 <strong>Tip:</strong> Right-click and select "Inspect" to open developer tools and view console messages for debugging.</p>
+        <p>📋 <strong>Known Issues:</strong> Check <code>KNOWN_ISSUES.md</code> for a comprehensive list of known problems and solutions.</p>
       </div>
     </div>
   );

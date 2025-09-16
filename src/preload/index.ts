@@ -8,12 +8,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Page analysis functionality
   analyzePage: (url: string) => ipcRenderer.invoke('analyze-page', url),
+  debugPageContent: (url: string) => ipcRenderer.invoke('debug-page-content', url),
   
   // Fresh crawl functionality
   requestFreshCrawl: (url: string) => ipcRenderer.invoke('fresh-crawl', url),
   
   // Predictive hover functionality
   getPreview: (elementId: string) => ipcRenderer.invoke('get-preview', elementId),
+  
+  // Page analysis functionality
+  getPageAnalysis: () => ipcRenderer.invoke('get-page-analysis'),
   
   // Theme management
   setTheme: (theme: 'light' | 'dark') => ipcRenderer.invoke('set-theme', theme),
@@ -24,6 +28,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // External browser functionality
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   updateApiKey: (apiKey: string) => ipcRenderer.invoke('update-api-key', apiKey),
+  
+  // AI Provider management
+  updateAIProvider: (provider: string, apiKey: string) => ipcRenderer.invoke('update-ai-provider', provider, apiKey),
+  getAIConfig: () => ipcRenderer.invoke('get-ai-config'),
+  
+  // Enhanced tooltip functionality
+  generateTooltip: (url: string, elementInfo: any) => ipcRenderer.invoke('generate-tooltip', url, elementInfo),
+  
+  // Auto-updater functionality
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
   
   // Navigation
   navigateTo: (url: string) => ipcRenderer.invoke('navigate-to', url),
@@ -65,8 +82,10 @@ declare global {
     electronAPI: {
       sendAIQuery: (query: string, pageContext?: string) => Promise<{ response: string; error?: boolean }>;
       analyzePage: (url: string) => Promise<{ analysis: any; error?: string }>;
-      requestFreshCrawl: (url: string) => Promise<{ success: boolean; url: string }>;
-      getPreview: (elementId: string) => Promise<{ mediaUrl: string; type: string }>;
+      debugPageContent: (url: string) => Promise<{ success: boolean; content?: any; error?: string }>;
+      requestFreshCrawl: (url: string) => Promise<{ success: boolean; url: string; elementCount?: number; analysis?: any; error?: string }>;
+      getPreview: (elementId: string) => Promise<{ mediaUrl: string; type: string; description?: string }>;
+      getPageAnalysis: () => Promise<{ success: boolean; analysis?: any; message?: string }>;
       setTheme: (theme: 'light' | 'dark') => Promise<void>;
       toggleAIChat: (isOpen: boolean) => Promise<{ success: boolean }>;
       navigateTo: (url: string) => Promise<{ success: boolean; url?: string; error?: string }>;
@@ -82,6 +101,13 @@ declare global {
       onLoadingFinished: (callback: () => void) => void;
       openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
       updateApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
+      updateAIProvider: (provider: string, apiKey: string) => Promise<{ success: boolean; error?: string }>;
+      getAIConfig: () => Promise<{ success: boolean; config?: { provider: string; supportedProviders: string[]; isConfigured: boolean }; error?: string }>;
+      generateTooltip: (url: string, elementInfo: any) => Promise<{ success: boolean; data?: any; error?: string }>;
+      checkForUpdates: () => Promise<{ success: boolean; result?: any; error?: string }>;
+      downloadUpdate: () => Promise<{ success: boolean; error?: string }>;
+      installUpdate: () => Promise<{ success: boolean; error?: string }>;
+      getUpdateStatus: () => Promise<{ success: boolean; status?: { isInitialized: boolean; updateAvailable: boolean; updateDownloaded: boolean; currentVersion: string }; error?: string }>;
     };
   }
 }

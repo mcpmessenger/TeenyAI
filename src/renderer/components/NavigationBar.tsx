@@ -9,6 +9,10 @@ interface NavigationBarProps {
   onToggleAIChat: () => void;
   onToggleHelp: () => void;
   theme: 'light' | 'dark';
+  analysisStatus?: {
+    hasAnalysis: boolean;
+    elementCount?: number;
+  };
 }
 
 export const NavigationBar: React.FC<NavigationBarProps> = ({
@@ -19,12 +23,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   onToggleTheme,
   onToggleAIChat,
   onToggleHelp,
-  theme
+  theme,
+  analysisStatus
 }) => {
   const [inputUrl, setInputUrl] = useState(url);
 
   // Sync input with current URL
   useEffect(() => {
+    console.log('📝 NavigationBar received URL:', url);
     setInputUrl(url);
   }, [url]);
 
@@ -38,8 +44,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       return;
     }
     
-    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+    // Handle search queries vs URLs
+    if (formattedUrl.includes(' ') || (!formattedUrl.includes('.') && !formattedUrl.startsWith('http'))) {
+      // This looks like a search query, not a URL
+      formattedUrl = `https://www.google.com/search?q=${encodeURIComponent(formattedUrl)}`;
+    } else if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
       formattedUrl = `https://${formattedUrl}`;
+    }
+    
+    // Clean up the URL to prevent encoding issues
+    try {
+      const url = new URL(formattedUrl);
+      formattedUrl = url.toString();
+    } catch (error) {
+      console.error('❌ Invalid URL format:', formattedUrl);
+      // Fallback to Google search
+      formattedUrl = `https://www.google.com/search?q=${encodeURIComponent(inputUrl.trim())}`;
     }
     
     console.log('🌐 Submitting URL:', formattedUrl);
@@ -107,6 +127,30 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
             <path d="M3 21v-5h5"/>
           </svg>
+        </button>
+        <button 
+          className={`nav-button fresh-crawl-button ${analysisStatus?.hasAnalysis ? 'analyzed' : ''}`}
+          onClick={onFreshCrawl}
+          disabled={isLoading}
+          title={analysisStatus?.hasAnalysis 
+            ? `Fresh Crawl - Page analyzed (${analysisStatus.elementCount} elements found)` 
+            : "Fresh Crawl - Analyze page content for AI assistance"
+          }
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2a3 3 0 0 1 3 3c0 1.5-3 6-3 6s-3-4.5-3-6a3 3 0 0 1 3-3z"/>
+            <path d="M12 12a3 3 0 0 1 3 3c0 1.5-3 6-3 6s-3-4.5-3-6a3 3 0 0 1 3-3z"/>
+            <path d="M12 2a3 3 0 0 0-3 3c0 1.5 3 6 3 6s3-4.5 3-6a3 3 0 0 0-3-3z"/>
+            <path d="M12 12a3 3 0 0 0-3 3c0 1.5 3 6 3 6s3-4.5 3-6a3 3 0 0 0-3-3z"/>
+            <circle cx="12" cy="12" r="2"/>
+            <path d="M8 8l-2-2"/>
+            <path d="M16 8l2-2"/>
+            <path d="M8 16l-2 2"/>
+            <path d="M16 16l2 2"/>
+          </svg>
+          {analysisStatus?.hasAnalysis && (
+            <span className="analysis-badge">{analysisStatus.elementCount}</span>
+          )}
         </button>
       </div>
 

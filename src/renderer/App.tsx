@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 // BrowserWindow component removed - using BrowserView in main process
-import { AIChatPanel } from './components/AIChatPanel';
+import { FloatingChatBubble } from './components/FloatingChatBubble';
+import './components/FloatingChatBubble.css';
 import { HoverPreview } from './components/HoverPreview';
 import { NavigationBar } from './components/NavigationBar';
 import { TroubleshootingPanel } from './components/TroubleshootingPanel';
@@ -17,7 +18,8 @@ const App: React.FC = () => {
     setCurrentUrl,
     setLoading,
     toggleAIChat,
-    setTheme
+    setTheme,
+    setPageAnalysis
   } = useStore();
 
   const [hoverPreview, setHoverPreview] = useState<{
@@ -26,6 +28,10 @@ const App: React.FC = () => {
   } | null>(null);
 
   const [troubleshootingOpen, setTroubleshootingOpen] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<{
+    hasAnalysis: boolean;
+    elementCount?: number;
+  }>({ hasAnalysis: false });
 
   useEffect(() => {
     // Set up electron API listeners
@@ -35,6 +41,7 @@ const App: React.FC = () => {
       });
 
       window.electronAPI.onPageLoad((url) => {
+        console.log('📄 Page loaded:', url);
         setCurrentUrl(url);
         setLoading(false);
       });
@@ -55,14 +62,19 @@ const App: React.FC = () => {
         console.log('🔄 Loading started in BrowserView');
         setLoading(true);
       });
-
-      // Temporarily commented out until preload script issue is resolved
-      // window.electronAPI.onLoadingFinished(() => {
-      //   console.log('✅ Loading finished in BrowserView');
-      //   setLoading(false);
-      // });
     }
-  }, []);
+
+    // Periodic URL check to ensure we always have the current URL
+    const urlCheckInterval = setInterval(() => {
+      const webview = document.getElementById('webview') as any;
+      if (webview && webview.src && webview.src !== currentUrl) {
+        console.log('🔍 URL check: WebView src changed from', currentUrl, 'to', webview.src);
+        setCurrentUrl(webview.src);
+      }
+    }, 1000);
+
+    return () => clearInterval(urlCheckInterval);
+  }, [currentUrl]);
 
   const handleNavigation = async (url: string) => {
     console.log('🧭 Navigating to:', url);
@@ -78,8 +90,31 @@ const App: React.FC = () => {
 
   const handleFreshCrawl = async () => {
     if (window.electronAPI && currentUrl) {
+      console.log('🕷️ Fresh crawl requested for:', currentUrl);
       setLoading(true);
-      await window.electronAPI.requestFreshCrawl(currentUrl);
+      
+      try {
+        // Use the new Playwright-powered fresh crawl
+        const result = await window.electronAPI.requestFreshCrawl(currentUrl);
+        
+        if (result.success) {
+          console.log(`✅ Fresh crawl completed! Found ${result.elementCount} interactive elements`);
+          // Update the global page analysis so the chat bubble gets the new data
+          if (result.analysis) {
+            setPageAnalysis(result.analysis);
+            setAnalysisStatus({
+              hasAnalysis: true,
+              elementCount: result.elementCount
+            });
+          }
+        } else {
+          console.error('❌ Fresh crawl failed:', result.error);
+        }
+      } catch (error) {
+        console.error('❌ Fresh crawl error:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -117,6 +152,7 @@ const App: React.FC = () => {
         onToggleAIChat={handleAIChatToggle}
         onToggleHelp={() => setTroubleshootingOpen(!troubleshootingOpen)}
         theme={theme}
+        analysisStatus={analysisStatus}
       />
       
       <div className="main-content">
@@ -131,8 +167,32 @@ const App: React.FC = () => {
             websecurity="true"
             allowpopups="false"
             disablewebsecurity="false"
-            onLoadStart={() => setLoading(true)}
-            onLoadStop={() => setLoading(false)}
+            onLoadStart={(e) => {
+              console.log('🔄 WebView load start:', e.target.src);
+              setLoading(true);
+            }}
+            onLoadStop={(e) => {
+              console.log('✅ WebView load stop:', e.target.src);
+              setLoading(false);
+            }}
+            onDidNavigate={(e) => {
+              console.log('🧭 WebView navigated to:', e.url);
+              setCurrentUrl(e.url);
+              setLoading(false);
+            }}
+            onDidNavigateInPage={(e) => {
+              console.log('🧭 WebView navigated in page to:', e.url);
+              setCurrentUrl(e.url);
+            }}
+            onDidFinishLoad={(e) => {
+              console.log('🏁 WebView finished loading:', e.target.src);
+              setCurrentUrl(e.target.src);
+              setLoading(false);
+            }}
+            onDidFailLoad={(e) => {
+              console.error('❌ WebView failed to load:', e.errorDescription);
+              setLoading(false);
+            }}
             onNewWindow={(e) => {
               // Handle new window requests - open in external browser
               e.preventDefault();
@@ -150,10 +210,10 @@ const App: React.FC = () => {
         
         
         
-        <AIChatPanel
+        <FloatingChatBubble
           isOpen={aiChatOpen}
           currentUrl={currentUrl}
-          onClose={handleAIChatToggle}
+          onToggle={handleAIChatToggle}
         />
       </div>
 
