@@ -117,14 +117,99 @@ window.addEventListener('beforeunload', (e) => {
   // Allow normal navigation
 });
 
-// Security: Block dangerous scripts
+// Security: Block dangerous scripts (but allow necessary ones for rendering)
 document.addEventListener('DOMContentLoaded', () => {
-  // Remove any potentially dangerous scripts
+  // Only remove scripts that are clearly dangerous, not all non-HTTPS scripts
   const scripts = document.querySelectorAll('script');
   scripts.forEach(script => {
-    if (script.src && !script.src.startsWith('https://')) {
+    if (script.src && script.src.startsWith('javascript:') || script.src.startsWith('data:')) {
       script.remove();
     }
+  });
+  
+  // Ensure CAPTCHA elements are properly sized
+  const captchaElements = document.querySelectorAll('[data-captcha], .g-recaptcha, .recaptcha, iframe[src*="recaptcha"]');
+  captchaElements.forEach(element => {
+    element.style.minWidth = '300px';
+    element.style.minHeight = '400px';
+    element.style.width = '100%';
+    element.style.height = 'auto';
+  });
+  
+  // Handle Google reCAPTCHA specifically
+  const recaptchaFrames = document.querySelectorAll('iframe[src*="recaptcha"]');
+  recaptchaFrames.forEach(iframe => {
+    iframe.style.width = '100%';
+    iframe.style.height = '400px';
+    iframe.style.minHeight = '400px';
+    iframe.style.border = 'none';
+  });
+  
+  // Remove scrollbars from the main document
+  document.body.style.overflow = 'hidden';
+  document.documentElement.style.overflow = 'hidden';
+  
+  // Debug: Log viewport dimensions
+  console.log('🔍 WebView viewport dimensions:', {
+    windowInnerHeight: window.innerHeight,
+    windowInnerWidth: window.innerWidth,
+    documentBodyHeight: document.body.offsetHeight,
+    documentBodyWidth: document.body.offsetWidth,
+    documentElementHeight: document.documentElement.offsetHeight,
+    documentElementWidth: document.documentElement.offsetWidth
+  });
+  
+  // Ensure all iframes don't have scrollbars
+  const allIframes = document.querySelectorAll('iframe');
+  allIframes.forEach(iframe => {
+    iframe.style.overflow = 'hidden';
+    iframe.scrolling = 'no';
+  });
+  
+  // Watch for dynamically loaded CAPTCHAs
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === 1) { // Element node
+          // Check if the added node is a CAPTCHA element
+          const captchaElements = node.querySelectorAll ? 
+            node.querySelectorAll('[data-captcha], .g-recaptcha, .recaptcha, iframe[src*="recaptcha"]') : [];
+          
+          // Also check if the node itself is a CAPTCHA element
+          if (node.matches && node.matches('[data-captcha], .g-recaptcha, .recaptcha, iframe[src*="recaptcha"]')) {
+            captchaElements.push(node);
+          }
+          
+          captchaElements.forEach(element => {
+            element.style.minWidth = '300px';
+            element.style.minHeight = '400px';
+            element.style.width = '100%';
+            element.style.height = 'auto';
+            
+            if (element.tagName === 'IFRAME') {
+              element.style.height = '400px';
+              element.style.minHeight = '400px';
+              element.style.border = 'none';
+              element.style.overflow = 'hidden';
+              element.scrolling = 'no';
+            }
+          });
+          
+          // Also handle any new iframes
+          const newIframes = node.querySelectorAll ? node.querySelectorAll('iframe') : [];
+          newIframes.forEach(iframe => {
+            iframe.style.overflow = 'hidden';
+            iframe.scrolling = 'no';
+          });
+        }
+      });
+    });
+  });
+  
+  // Start observing
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
   });
 });
 
