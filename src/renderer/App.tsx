@@ -97,17 +97,193 @@ const App: React.FC = () => {
       console.log('🧭 WebView navigated to:', event.url);
       setCurrentUrl(event.url);
       setLoading(false);
+      
+      // Debug WebView state after navigation
+      const webview = document.getElementById('webview') as any;
+      if (webview) {
+        console.log('🔍 WebView after navigation:');
+        console.log('- WebView src:', webview.src);
+        console.log('- WebView dimensions:', webview.offsetWidth, 'x', webview.offsetHeight);
+        console.log('- WebView visible:', webview.offsetWidth > 0 && webview.offsetHeight > 0);
+      }
     };
 
     const handleDidFinishLoad = () => {
       console.log('🏁 WebView finished loading');
       setLoading(false);
-      // Check if WebView is visible
+
+      // Extensive debugging
       const webview = document.getElementById('webview') as any;
+      const container = document.querySelector('.browser-view-container') as HTMLElement;
+      const mainContent = document.querySelector('.main-content') as HTMLElement;
+
       if (webview) {
-        console.log('🔍 WebView element:', webview);
-        console.log('🔍 WebView src:', webview.src);
-        console.log('🔍 WebView visible:', webview.offsetWidth, 'x', webview.offsetHeight);
+        console.log('🔍 === WEBVIEW DEBUG INFORMATION ===');
+        console.log('WebView element:', webview);
+        console.log('WebView src:', webview.src);
+        console.log('WebView dimensions:', webview.offsetWidth, 'x', webview.offsetHeight);
+        console.log('WebView computed style:', window.getComputedStyle(webview));
+        console.log('WebView getBoundingClientRect:', webview.getBoundingClientRect());
+
+        if (container) {
+          console.log('🔍 Container dimensions:', container.offsetWidth, 'x', container.offsetHeight);
+          console.log('Container getBoundingClientRect:', container.getBoundingClientRect());
+        }
+
+        if (mainContent) {
+          console.log('🔍 Main content dimensions:', mainContent.offsetWidth, 'x', mainContent.offsetHeight);
+          console.log('Main content getBoundingClientRect:', mainContent.getBoundingClientRect());
+        }
+
+        console.log('🔍 Window dimensions:', window.innerWidth, 'x', window.innerHeight);
+        console.log('🔍 === END DEBUG INFORMATION ===');
+        
+        // Check if WebView is actually loading content
+        setTimeout(() => {
+          try {
+            if (webview.executeJavaScript) {
+              webview.executeJavaScript(`
+                console.log('🔍 WebView content check:');
+                console.log('- Document title:', document.title);
+                console.log('- Body children count:', document.body ? document.body.children.length : 'No body');
+                console.log('- Document ready state:', document.readyState);
+                console.log('- Window location:', window.location.href);
+                console.log('- Document URL:', document.URL);
+                console.log('- Window inner dimensions:', window.innerWidth, 'x', window.innerHeight);
+                console.log('- Document dimensions:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
+                console.log('- Body dimensions:', document.body.offsetWidth, 'x', document.body.offsetHeight);
+              `);
+            }
+          } catch (error) {
+            console.log('⚠️ Could not check WebView content:', error);
+          }
+        }, 500);
+        
+        // Additional container height debugging
+        setTimeout(() => {
+          const container = document.querySelector('.browser-view-container') as HTMLElement;
+          const mainContent = document.querySelector('.main-content') as HTMLElement;
+          
+          if (container) {
+            console.log('🔍 Container height debugging:');
+            console.log('- Container offsetHeight:', container.offsetHeight);
+            console.log('- Container clientHeight:', container.clientHeight);
+            console.log('- Container scrollHeight:', container.scrollHeight);
+            console.log('- Container computed height:', window.getComputedStyle(container).height);
+          }
+          
+          if (mainContent) {
+            console.log('- Main content offsetHeight:', mainContent.offsetHeight);
+            console.log('- Main content clientHeight:', mainContent.clientHeight);
+            console.log('- Main content computed height:', window.getComputedStyle(mainContent).height);
+          }
+        }, 1000);
+
+        // AGGRESSIVE external content override fix
+        setTimeout(() => {
+          try {
+            if (webview.executeJavaScript) {
+              console.log('🔍 Attempting to execute JavaScript in WebView...');
+              webview.executeJavaScript(`
+                console.log('🔍 BEFORE FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
+                console.log('🔍 BEFORE FIX - Document body style:', document.body.style.cssText);
+                console.log('🔍 BEFORE FIX - Document element style:', document.documentElement.style.cssText);
+
+                // AGGRESSIVE external content override
+                let viewportMeta = document.querySelector('meta[name="viewport"]');
+                if (!viewportMeta) {
+                  viewportMeta = document.createElement('meta');
+                  viewportMeta.name = 'viewport';
+                  document.head.appendChild(viewportMeta);
+                }
+                viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+
+                // OVERRIDE external page CSS completely
+                document.documentElement.style.cssText = \`
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  position: relative !important;
+                  top: 0 !important;
+                  left: 0 !important;
+                  height: 100vh !important;
+                  min-height: 100vh !important;
+                  overflow: visible !important;
+                \`;
+                
+                document.body.style.cssText = \`
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  position: relative !important;
+                  top: 0 !important;
+                  left: 0 !important;
+                  height: 100vh !important;
+                  min-height: 100vh !important;
+                  overflow: visible !important;
+                  transform: none !important;
+                \`;
+
+                // Add global CSS override
+                let overrideStyle = document.getElementById('webview-override-styles');
+                if (!overrideStyle) {
+                  overrideStyle = document.createElement('style');
+                  overrideStyle.id = 'webview-override-styles';
+                  overrideStyle.textContent = \`
+                    html, body {
+                      margin: 0 !important;
+                      padding: 0 !important;
+                      height: 100vh !important;
+                      min-height: 100vh !important;
+                      overflow: visible !important;
+                      position: relative !important;
+                      top: 0 !important;
+                      left: 0 !important;
+                    }
+                    * {
+                      box-sizing: border-box !important;
+                    }
+                  \`;
+                  document.head.appendChild(overrideStyle);
+                  console.log('✅ Added global CSS override styles');
+                }
+
+                console.log('🔍 AFTER FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
+                console.log('🔍 AFTER FIX - Document body style:', document.body.style.cssText);
+                console.log('🔍 AFTER FIX - Document element style:', document.documentElement.style.cssText);
+                console.log('✅ Applied aggressive external content override fix');
+              `).then(() => {
+                console.log('✅ JavaScript executed successfully in WebView');
+              }).catch((error) => {
+                console.error('❌ Failed to execute JavaScript in WebView:', error);
+              });
+            } else {
+              console.log('❌ WebView executeJavaScript method not available');
+            }
+
+            // Also try setting WebView zoom and size directly
+            webview.setZoomFactor(1.0);
+            if (webview.setSize) {
+              const rect = webview.getBoundingClientRect();
+              webview.setSize({ width: rect.width, height: rect.height });
+            }
+          } catch (error) {
+            console.log('⚠️ Could not execute JavaScript in WebView:', error);
+          }
+        }, 1000);
+        
+        // Additional gentle fix after 3 seconds
+        setTimeout(() => {
+          try {
+            if (webview.executeJavaScript) {
+              webview.executeJavaScript(`
+                // SECOND PASS - Gentle viewport check
+                console.log('🔍 SECOND PASS - WebView viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
+                console.log('🔍 Content loaded:', document.body.children.length, 'elements');
+              `);
+            }
+          } catch (error) {
+            console.log('⚠️ Second pass fix failed:', error);
+          }
+        }, 3000);
       }
     };
 
@@ -124,6 +300,15 @@ const App: React.FC = () => {
 
     const handleDidAttach = () => {
       console.log('🔗 WebView attached');
+      
+      // Debug WebView state after attachment
+      const webview = document.getElementById('webview') as any;
+      if (webview) {
+        console.log('🔍 WebView after attachment:');
+        console.log('- WebView src:', webview.src);
+        console.log('- WebView dimensions:', webview.offsetWidth, 'x', webview.offsetHeight);
+        console.log('- WebView isAttached:', webview.isAttached ? webview.isAttached() : 'unknown');
+      }
     };
 
     // Add event listeners
@@ -155,7 +340,22 @@ const App: React.FC = () => {
     // Update WebView src directly
     const webview = document.getElementById('webview') as any;
     if (webview) {
+      console.log('🔍 WebView before navigation:');
+      console.log('- WebView element exists:', !!webview);
+      console.log('- WebView src before:', webview.src);
+      console.log('- WebView dimensions before:', webview.offsetWidth, 'x', webview.offsetHeight);
+      
       webview.src = url;
+      
+      // Check WebView state after setting src
+      setTimeout(() => {
+        console.log('🔍 WebView after setting src:');
+        console.log('- WebView src after:', webview.src);
+        console.log('- WebView dimensions after:', webview.offsetWidth, 'x', webview.offsetHeight);
+        console.log('- WebView isAttached:', webview.isAttached ? webview.isAttached() : 'unknown');
+      }, 100);
+    } else {
+      console.error('❌ WebView element not found!');
     }
   };
 
@@ -164,7 +364,18 @@ const App: React.FC = () => {
     console.log('🔄 Refreshing page');
     const webview = document.getElementById('webview') as any;
     if (webview) {
-      webview.reload();
+      console.log('🔍 WebView found for refresh:', webview);
+      console.log('🔍 WebView src before refresh:', webview.src);
+      console.log('🔍 WebView reload method exists:', typeof webview.reload);
+      
+      try {
+        webview.reload();
+        console.log('✅ WebView reload called successfully');
+      } catch (error) {
+        console.error('❌ WebView reload failed:', error);
+      }
+    } else {
+      console.error('❌ WebView element not found for refresh!');
     }
   };
 
@@ -228,19 +439,52 @@ const App: React.FC = () => {
     console.log(`🤖 Toggling AI chat panel: ${newAIChatOpen ? 'open' : 'closed'}`);
     toggleAIChat();
     
+    // Debug preload script status
+    console.log('🔍 Debugging preload script status:');
+    console.log('- window.electronAPI exists:', !!window.electronAPI);
+    console.log('- window.electronAPI type:', typeof window.electronAPI);
+    console.log('- window keys:', Object.keys(window).filter(key => key.includes('electron')));
+    
     // Notify main process to resize BrowserView
     if (window.electronAPI) {
       console.log('📡 Sending toggle-ai-chat IPC message');
       const result = await window.electronAPI.toggleAIChat(newAIChatOpen);
       console.log('📡 IPC result:', result);
     } else {
-      console.log('❌ electronAPI not available');
+      console.log('❌ electronAPI not available - preload script may not be loading');
+      console.log('🔧 This explains why WebView fixes are not working!');
     }
   };
 
   const handleConsoleToggle = () => {
     setConsoleOpen(!consoleOpen);
   };
+
+  // Manual fix trigger for debugging
+  const handleManualFix = async () => {
+    console.log('🔧 Manual fix triggered');
+    const webview = document.getElementById('webview') as any;
+    if (webview && webview.executeJavaScript) {
+      try {
+        await webview.executeJavaScript(`
+          console.log('🔧 MANUAL FIX - Overriding all CSS');
+          document.documentElement.style.cssText = 'margin: 0 !important; padding: 0 !important; position: relative !important; top: 0 !important; left: 0 !important; height: 100vh !important; min-height: 100vh !important; overflow: visible !important;';
+          document.body.style.cssText = 'margin: 0 !important; padding: 0 !important; position: relative !important; top: 0 !important; left: 0 !important; height: 100vh !important; min-height: 100vh !important; overflow: visible !important; transform: none !important;';
+          console.log('✅ Manual fix applied');
+        `);
+        console.log('✅ Manual fix executed successfully');
+      } catch (error) {
+        console.error('❌ Manual fix failed:', error);
+      }
+    } else {
+      console.error('❌ WebView not available for manual fix');
+    }
+  };
+
+  // Debug preload script on every render
+  console.log('🔍 Preload script status check:');
+  console.log('- window.electronAPI exists:', !!window.electronAPI);
+  console.log('- window.electronAPI type:', typeof window.electronAPI);
 
   return (
     <div className={`app ${theme}`}>
@@ -280,7 +524,10 @@ const App: React.FC = () => {
               outline: 'none'
             }}
             partition="persist:webview"
-            webpreferences="contextIsolation=true,enableRemoteModule=false,nodeIntegration=false,allowRunningInsecureContent=true,webviewTag=true"
+            webpreferences="contextIsolation=true,enableRemoteModule=false,nodeIntegration=false,allowRunningInsecureContent=true,webviewTag=true,zoomFactor=1.0"
+            autosize="true"
+            minwidth="800"
+            minheight="600"
           />
         </div>
         
