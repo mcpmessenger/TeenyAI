@@ -119,6 +119,10 @@ window.addEventListener('beforeunload', (e) => {
 
 // Security: Block dangerous scripts (but allow necessary ones for rendering)
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('🔒 WebView preload script: DOMContentLoaded event fired');
+  console.log('🔍 Document URL:', document.URL);
+  console.log('🔍 Document title:', document.title);
+  
   // Only remove scripts that are clearly dangerous, not all non-HTTPS scripts
   const scripts = document.querySelectorAll('script');
   scripts.forEach(script => {
@@ -133,31 +137,50 @@ document.addEventListener('DOMContentLoaded', () => {
     element.style.minWidth = '300px';
     element.style.minHeight = '400px';
     element.style.width = '100%';
-    element.style.height = 'auto';
+    element.style.height = '400px';
+    element.style.overflow = 'visible';
+    element.style.position = 'relative';
+    element.style.zIndex = '9999';
   });
   
-  // Handle Google reCAPTCHA specifically
-  const recaptchaFrames = document.querySelectorAll('iframe[src*="recaptcha"]');
-  recaptchaFrames.forEach(iframe => {
-    iframe.style.width = '100%';
-    iframe.style.height = '400px';
-    iframe.style.minHeight = '400px';
-    iframe.style.border = 'none';
-  });
-  
-  // Remove scrollbars from the main document
+  // FORCE FULL VIEWPORT - AGGRESSIVE TRUNCATION FIX
+  document.body.style.margin = '0';
+  document.body.style.padding = '0';
   document.body.style.overflow = 'hidden';
+  document.body.style.position = 'relative';
+  document.body.style.top = '0';
+  document.body.style.left = '0';
+  document.body.style.height = '100vh';
+  document.body.style.minHeight = '100vh';
+
+  document.documentElement.style.margin = '0';
+  document.documentElement.style.padding = '0';
   document.documentElement.style.overflow = 'hidden';
+  document.documentElement.style.position = 'relative';
+  document.documentElement.style.top = '0';
+  document.documentElement.style.left = '0';
+  document.documentElement.style.height = '100vh';
+  document.documentElement.style.minHeight = '100vh';
+
+  // Add proper viewport meta tag if missing
+  if (!document.querySelector('meta[name="viewport"]')) {
+    const viewportMeta = document.createElement('meta');
+    viewportMeta.name = 'viewport';
+    viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+    document.head.appendChild(viewportMeta);
+  }
   
-  // Debug: Log viewport dimensions
-  console.log('🔍 WebView viewport dimensions:', {
-    windowInnerHeight: window.innerHeight,
-    windowInnerWidth: window.innerWidth,
-    documentBodyHeight: document.body.offsetHeight,
-    documentBodyWidth: document.body.offsetWidth,
-    documentElementHeight: document.documentElement.offsetHeight,
-    documentElementWidth: document.documentElement.offsetWidth
-  });
+  // Debug: Log viewport dimensions (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 WebView viewport dimensions:', {
+      windowInnerHeight: window.innerHeight,
+      windowInnerWidth: window.innerWidth,
+      documentBodyHeight: document.body.offsetHeight,
+      documentBodyWidth: document.body.offsetWidth,
+      documentElementHeight: document.documentElement.offsetHeight,
+      documentElementWidth: document.documentElement.offsetWidth
+    });
+  }
   
   // Ensure all iframes don't have scrollbars
   const allIframes = document.querySelectorAll('iframe');
@@ -171,11 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1) { // Element node
-          // Check if the added node is a CAPTCHA element
           const captchaElements = node.querySelectorAll ? 
             node.querySelectorAll('[data-captcha], .g-recaptcha, .recaptcha, iframe[src*="recaptcha"]') : [];
           
-          // Also check if the node itself is a CAPTCHA element
           if (node.matches && node.matches('[data-captcha], .g-recaptcha, .recaptcha, iframe[src*="recaptcha"]')) {
             captchaElements.push(node);
           }
@@ -184,22 +205,10 @@ document.addEventListener('DOMContentLoaded', () => {
             element.style.minWidth = '300px';
             element.style.minHeight = '400px';
             element.style.width = '100%';
-            element.style.height = 'auto';
-            
-            if (element.tagName === 'IFRAME') {
-              element.style.height = '400px';
-              element.style.minHeight = '400px';
-              element.style.border = 'none';
-              element.style.overflow = 'hidden';
-              element.scrolling = 'no';
-            }
-          });
-          
-          // Also handle any new iframes
-          const newIframes = node.querySelectorAll ? node.querySelectorAll('iframe') : [];
-          newIframes.forEach(iframe => {
-            iframe.style.overflow = 'hidden';
-            iframe.scrolling = 'no';
+            element.style.height = '400px';
+            element.style.overflow = 'visible';
+            element.style.position = 'relative';
+            element.style.zIndex = '9999';
           });
         }
       });
@@ -211,6 +220,30 @@ document.addEventListener('DOMContentLoaded', () => {
     childList: true,
     subtree: true
   });
+  
+// SIMPLE EXTERNAL CONTENT FIX - Run every 2 seconds
+setInterval(() => {
+  try {
+    // Simple viewport fix
+    document.documentElement.style.margin = '0';
+    document.documentElement.style.padding = '0';
+    document.documentElement.style.height = '100%';
+    document.documentElement.style.overflow = 'visible';
+    
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
+    document.body.style.height = '100%';
+    document.body.style.overflow = 'visible';
+    document.body.style.transform = 'none';
+    document.body.style.position = 'relative';
+    document.body.style.top = '0';
+    document.body.style.left = '0';
+    
+    console.log('🔧 Applied simple preload fix');
+  } catch (e) {
+    console.error('❌ Error in preload script:', e);
+  }
+}, 2000);
 });
 
 console.log('🔒 WebView preload script loaded with security measures');

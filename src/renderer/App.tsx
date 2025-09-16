@@ -179,77 +179,37 @@ const App: React.FC = () => {
           }
         }, 1000);
 
-        // AGGRESSIVE external content override fix
+        // SIMPLE external content override fix
         setTimeout(() => {
           try {
             if (webview.executeJavaScript) {
               console.log('🔍 Attempting to execute JavaScript in WebView...');
               webview.executeJavaScript(`
-                console.log('🔍 BEFORE FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
-                console.log('🔍 BEFORE FIX - Document body style:', document.body.style.cssText);
-                console.log('🔍 BEFORE FIX - Document element style:', document.documentElement.style.cssText);
-
-                // AGGRESSIVE external content override
-                let viewportMeta = document.querySelector('meta[name="viewport"]');
-                if (!viewportMeta) {
-                  viewportMeta = document.createElement('meta');
-                  viewportMeta.name = 'viewport';
-                  document.head.appendChild(viewportMeta);
+                try {
+                  console.log('🔍 BEFORE FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
+                  
+                  // SIMPLE fix - just reset the body and html styles
+                  document.documentElement.style.margin = '0';
+                  document.documentElement.style.padding = '0';
+                  document.documentElement.style.height = '100%';
+                  document.documentElement.style.overflow = 'visible';
+                  
+                  document.body.style.margin = '0';
+                  document.body.style.padding = '0';
+                  document.body.style.height = '100%';
+                  document.body.style.overflow = 'visible';
+                  document.body.style.transform = 'none';
+                  
+                  // Remove any negative positioning
+                  document.body.style.position = 'relative';
+                  document.body.style.top = '0';
+                  document.body.style.left = '0';
+                  
+                  console.log('🔍 AFTER FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
+                  console.log('✅ Applied simple external content fix');
+                } catch (e) {
+                  console.error('❌ Error in WebView script:', e);
                 }
-                viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-
-                // OVERRIDE external page CSS completely
-                document.documentElement.style.cssText = \`
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  position: relative !important;
-                  top: 0 !important;
-                  left: 0 !important;
-                  height: 100vh !important;
-                  min-height: 100vh !important;
-                  overflow: visible !important;
-                \`;
-                
-                document.body.style.cssText = \`
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  position: relative !important;
-                  top: 0 !important;
-                  left: 0 !important;
-                  height: 100vh !important;
-                  min-height: 100vh !important;
-                  overflow: visible !important;
-                  transform: none !important;
-                \`;
-
-                // Add global CSS override
-                let overrideStyle = document.getElementById('webview-override-styles');
-                if (!overrideStyle) {
-                  overrideStyle = document.createElement('style');
-                  overrideStyle.id = 'webview-override-styles';
-                  overrideStyle.textContent = \`
-                    html, body {
-                      margin: 0 !important;
-                      padding: 0 !important;
-                      height: 100vh !important;
-                      min-height: 100vh !important;
-                      overflow: visible !important;
-                      position: relative !important;
-                      top: 0 !important;
-                      left: 0 !important;
-                    }
-                    * {
-                      box-sizing: border-box !important;
-                    }
-                  \`;
-                  document.head.appendChild(overrideStyle);
-                  console.log('✅ Added global CSS override styles');
-                }
-
-                console.log('🔍 AFTER FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
-                console.log('🔍 AFTER FIX - Document body style:', document.body.style.cssText);
-                console.log('🔍 AFTER FIX - Document element style:', document.documentElement.style.cssText);
-                console.log('✅ Applied aggressive external content override fix');
               `).then(() => {
                 console.log('✅ JavaScript executed successfully in WebView');
               }).catch((error) => {
