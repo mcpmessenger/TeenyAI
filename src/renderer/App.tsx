@@ -5,6 +5,7 @@ import './components/FloatingChatBubble.css';
 import { HoverPreview } from './components/HoverPreview';
 import { NavigationBar } from './components/NavigationBar';
 import { TroubleshootingPanel } from './components/TroubleshootingPanel';
+import { Console } from './components/Console';
 import { useStore } from './store/browserStore';
 import './App.css';
 
@@ -28,6 +29,7 @@ const App: React.FC = () => {
   } | null>(null);
 
   const [troubleshootingOpen, setTroubleshootingOpen] = useState(false);
+  const [consoleOpen, setConsoleOpen] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<{
     hasAnalysis: boolean;
     elementCount?: number;
@@ -76,6 +78,75 @@ const App: React.FC = () => {
     return () => clearInterval(urlCheckInterval);
   }, [currentUrl]);
 
+  // WebView event handling
+  useEffect(() => {
+    const webview = document.getElementById('webview') as any;
+    if (!webview) return;
+
+    const handleLoadStart = () => {
+      console.log('🔄 WebView load start');
+      setLoading(true);
+    };
+
+    const handleLoadStop = () => {
+      console.log('✅ WebView load stop');
+      setLoading(false);
+    };
+
+    const handleDidNavigate = (event: any) => {
+      console.log('🧭 WebView navigated to:', event.url);
+      setCurrentUrl(event.url);
+      setLoading(false);
+    };
+
+    const handleDidFinishLoad = () => {
+      console.log('🏁 WebView finished loading');
+      setLoading(false);
+      // Check if WebView is visible
+      const webview = document.getElementById('webview') as any;
+      if (webview) {
+        console.log('🔍 WebView element:', webview);
+        console.log('🔍 WebView src:', webview.src);
+        console.log('🔍 WebView visible:', webview.offsetWidth, 'x', webview.offsetHeight);
+      }
+    };
+
+    const handleDidFailLoad = (event: any) => {
+      console.error('❌ WebView failed to load:', event.errorDescription);
+      console.error('❌ Error code:', event.errorCode);
+      setLoading(false);
+    };
+
+    const handleDomReady = () => {
+      console.log('🎯 WebView DOM ready');
+      setLoading(false);
+    };
+
+    const handleDidAttach = () => {
+      console.log('🔗 WebView attached');
+    };
+
+    // Add event listeners
+    webview.addEventListener('loadstart', handleLoadStart);
+    webview.addEventListener('loadstop', handleLoadStop);
+    webview.addEventListener('did-navigate', handleDidNavigate);
+    webview.addEventListener('did-finish-load', handleDidFinishLoad);
+    webview.addEventListener('did-fail-load', handleDidFailLoad);
+    webview.addEventListener('dom-ready', handleDomReady);
+    webview.addEventListener('did-attach', handleDidAttach);
+
+    // Cleanup
+    return () => {
+      webview.removeEventListener('loadstart', handleLoadStart);
+      webview.removeEventListener('loadstop', handleLoadStop);
+      webview.removeEventListener('did-navigate', handleDidNavigate);
+      webview.removeEventListener('did-finish-load', handleDidFinishLoad);
+      webview.removeEventListener('did-fail-load', handleDidFailLoad);
+      webview.removeEventListener('dom-ready', handleDomReady);
+      webview.removeEventListener('did-attach', handleDidAttach);
+    };
+  }, []);
+
   const handleNavigation = async (url: string) => {
     console.log('🧭 Navigating to:', url);
     setLoading(true);
@@ -85,6 +156,32 @@ const App: React.FC = () => {
     const webview = document.getElementById('webview') as any;
     if (webview) {
       webview.src = url;
+    }
+  };
+
+  // Add refresh functionality
+  const handleRefresh = async () => {
+    console.log('🔄 Refreshing page');
+    const webview = document.getElementById('webview') as any;
+    if (webview) {
+      webview.reload();
+    }
+  };
+
+  // Add back/forward functionality
+  const handleGoBack = async () => {
+    console.log('⬅️ Going back');
+    const webview = document.getElementById('webview') as any;
+    if (webview && webview.canGoBack()) {
+      webview.goBack();
+    }
+  };
+
+  const handleGoForward = async () => {
+    console.log('➡️ Going forward');
+    const webview = document.getElementById('webview') as any;
+    if (webview && webview.canGoForward()) {
+      webview.goForward();
     }
   };
 
@@ -141,6 +238,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleConsoleToggle = () => {
+    setConsoleOpen(!consoleOpen);
+  };
+
   return (
     <div className={`app ${theme}`}>
       <NavigationBar
@@ -151,11 +252,15 @@ const App: React.FC = () => {
         onToggleTheme={handleThemeToggle}
         onToggleAIChat={handleAIChatToggle}
         onToggleHelp={() => setTroubleshootingOpen(!troubleshootingOpen)}
+        onToggleConsole={handleConsoleToggle}
+        onRefresh={handleRefresh}
+        onGoBack={handleGoBack}
+        onGoForward={handleGoForward}
         theme={theme}
         analysisStatus={analysisStatus}
       />
       
-      <div className="main-content">
+      <div className={`main-content ${consoleOpen ? 'console-open' : ''}`}>
         {/* Web content using WebView tag for proper layering */}
         <div className="browser-view-container">
           <webview
@@ -164,47 +269,18 @@ const App: React.FC = () => {
             className="webview"
             preload="./webview-preload.js"
             nodeintegration="false"
-            websecurity="true"
-            allowpopups="false"
-            disablewebsecurity="false"
-            onLoadStart={(e) => {
-              console.log('🔄 WebView load start:', e.target.src);
-              setLoading(true);
+            websecurity="false"
+            allowpopups="true"
+            disablewebsecurity="true"
+            useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              outline: 'none'
             }}
-            onLoadStop={(e) => {
-              console.log('✅ WebView load stop:', e.target.src);
-              setLoading(false);
-            }}
-            onDidNavigate={(e) => {
-              console.log('🧭 WebView navigated to:', e.url);
-              setCurrentUrl(e.url);
-              setLoading(false);
-            }}
-            onDidNavigateInPage={(e) => {
-              console.log('🧭 WebView navigated in page to:', e.url);
-              setCurrentUrl(e.url);
-            }}
-            onDidFinishLoad={(e) => {
-              console.log('🏁 WebView finished loading:', e.target.src);
-              setCurrentUrl(e.target.src);
-              setLoading(false);
-            }}
-            onDidFailLoad={(e) => {
-              console.error('❌ WebView failed to load:', e.errorDescription);
-              setLoading(false);
-            }}
-            onNewWindow={(e) => {
-              // Handle new window requests - open in external browser
-              e.preventDefault();
-              if (window.electronAPI?.openExternal) {
-                window.electronAPI.openExternal(e.url);
-              }
-            }}
-            onPermissionRequest={(e) => {
-              // Deny all permission requests for security
-              e.preventDefault();
-              console.log('Permission denied:', e.permission);
-            }}
+            partition="persist:webview"
+            webpreferences="contextIsolation=true,enableRemoteModule=false,nodeIntegration=false,allowRunningInsecureContent=true,webviewTag=true"
           />
         </div>
         
@@ -231,7 +307,29 @@ const App: React.FC = () => {
         onClose={() => setTroubleshootingOpen(false)}
       />
 
+      {/* Console panel - rendered outside main content to avoid WebView layering issues */}
+      {consoleOpen && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            pointerEvents: 'none', 
+            zIndex: 2147483647,
+            isolation: 'isolate',
+            contain: 'layout style paint'
+          }}
+        >
+          <Console
+            isOpen={consoleOpen}
+            onClose={() => setConsoleOpen(false)}
+          />
+        </div>
+      )}
 
+    
     </div>
   );
 };

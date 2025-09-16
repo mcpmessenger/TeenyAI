@@ -22,7 +22,7 @@ interface BrowserActions {
 
 export const useStore = create<BrowserState & BrowserActions>((set) => ({
   // State
-  currentUrl: 'https://www.google.com',
+  currentUrl: 'https://example.com',
   isLoading: false,
   aiChatOpen: false,
   theme: 'light',

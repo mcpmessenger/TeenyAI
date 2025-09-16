@@ -1,14 +1,13 @@
-const { app, BrowserWindow, BrowserView, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const { join } = require('path');
 const { isDev } = require('./utils');
-const { createAIService, getSupportedProviders } = require('../backend/AIServiceFactory');
-const AutoUpdaterService = require('../backend/services/AutoUpdaterService');
+const { createAIService, getSupportedProviders } = require('./backend/AIServiceFactory');
+const AutoUpdaterService = require('./backend/services/AutoUpdaterService');
 
 // Load environment variables from .env file
-require('dotenv').config({ path: join(__dirname, '../../.env') });
+require('dotenv').config({ path: join(app.getAppPath(), '.env') });
 
 let mainWindow = null;
-let webView = null; // BrowserView for real browser
 let aiService = null; // Global AI service instance
 let autoUpdater = null; // Global auto-updater instance
 
@@ -73,17 +72,10 @@ const initializeAIService = () => {
     // Fallback: Set a default API key for testing if none found
     if (!apiKey) {
       console.log('⚠️ No API key found in environment variables.');
-      console.log('💡 Setting fallback API key for testing...');
-      apiKey = 'YOUR_OPENAI_API_KEY_HERE';
-      provider = 'openai';
-      console.log(`🔧 Using fallback OpenAI API key: ${apiKey.substring(0, 20)}...`);
+      console.log('💡 AI service will not be available without a valid API key.');
     }
     
-    // FORCE API KEY - TEMPORARY FIX
-    console.log('🔧 FORCING API KEY FOR TESTING...');
-    apiKey = 'YOUR_OPENAI_API_KEY_HERE';
-    provider = 'openai';
-    console.log(`🔧 FORCED API KEY: ${apiKey.substring(0, 20)}...`);
+    // Use the API key found in environment variables
     
     if (apiKey) {
       aiService = createAIService({ provider, apiKey });
@@ -139,53 +131,58 @@ console.log('🔧 Registering IPC handlers...');
 
 ipcMain.handle('navigate-to', async (event, url) => {
   console.log('🧭 Navigating to:', url);
-  if (webView) {
-    try {
-      await webView.webContents.loadURL(url);
-      return { success: true, url };
-    } catch (error) {
-      console.error('❌ Navigation failed:', error);
-      return { success: false, error: error.message };
-    }
-  }
-  return { success: false, error: 'BrowserView not available' };
+  // Navigation is handled by WebView tag in renderer process
+  return { success: true, url };
 });
 
 ipcMain.handle('get-current-url', async () => {
-  if (webView) {
-    return webView.webContents.getURL();
-  }
+  // URL is managed by WebView tag in renderer process
   return null;
 });
 
-ipcMain.handle('go-back', async () => {
-  if (webView && webView.webContents.canGoBack()) {
-    webView.webContents.goBack();
-    return true;
+ipcMain.handle('update-api-key', async (event, { provider, apiKey }) => {
+  try {
+    console.log(`🔄 Updating API key for provider: ${provider}`);
+    
+    // Validate the API key format
+    if (!apiKey || typeof apiKey !== 'string') {
+      throw new Error('Invalid API key provided');
+    }
+    
+    // Reinitialize the AI service with the new key
+    aiService = createAIService({ provider, apiKey });
+    
+    if (aiService) {
+      console.log(`✅ API key updated successfully for ${provider}`);
+      return { success: true, message: 'API key updated successfully' };
+    } else {
+      throw new Error('Failed to initialize AI service with new key');
+    }
+  } catch (error) {
+    console.error('❌ Failed to update API key:', error);
+    return { success: false, error: error.message };
   }
+});
+
+ipcMain.handle('go-back', async () => {
+  // Navigation is handled by WebView tag in renderer process
   return false;
 });
 
 ipcMain.handle('go-forward', async () => {
-  if (webView && webView.webContents.canGoForward()) {
-    webView.webContents.goForward();
-    return true;
-  }
+  // Navigation is handled by WebView tag in renderer process
   return false;
 });
 
 ipcMain.handle('reload', async () => {
-  if (webView) {
-    webView.webContents.reload();
-    return true;
-  }
+  // Navigation is handled by WebView tag in renderer process
   return false;
 });
 
 console.log('✅ All IPC handlers registered successfully');
 
 const createWindow = () => {
-  const preloadPath = isDev ? join(__dirname, '../../build/preload.js') : join(__dirname, 'preload.js');
+  const preloadPath = isDev ? join(__dirname, './preload.js') : join(__dirname, 'preload.js');
   console.log('🔧 Preload path:', preloadPath);
   console.log('🔧 __dirname:', __dirname);
   console.log('🔧 isDev:', isDev);
@@ -202,7 +199,9 @@ const createWindow = () => {
           webSecurity: true,
           allowRunningInsecureContent: false,
           experimentalFeatures: false,
-          sandbox: false
+          sandbox: false,
+          webviewTag: true,
+          enableRemoteModule: false
         },
     titleBarStyle: 'default',
     show: false
@@ -223,135 +222,21 @@ const createWindow = () => {
     }
   });
 
-  // Create BrowserView for real browser content
-  console.log('🔧 Creating BrowserView for real browser...');
-  
-  webView = new BrowserView({
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      experimentalFeatures: false
-    }
-  });
-
-  console.log('🔧 BrowserView created successfully');
-
-  // Add BrowserView to main window
-  mainWindow.setBrowserView(webView);
-  console.log('🔧 BrowserView added to main window');
-
-  // Set BrowserView bounds to fill the window (accounting for navigation bar)
-  const bounds = mainWindow.getBounds();
-  webView.setBounds({ x: 0, y: 60, width: bounds.width, height: bounds.height - 60 });
-  console.log('🔧 BrowserView bounds set:', { x: 0, y: 60, width: bounds.width, height: bounds.height - 60 });
-
-  // Load initial page
-  webView.webContents.loadURL('https://www.google.com');
-  console.log('🔧 Loading initial page: https://www.google.com');
-  
-  // Listen for BrowserView events
-  let loadingTimeout = null;
-  const LOADING_TIMEOUT_MS = 10000; // 10 seconds timeout
-
-  webView.webContents.on('did-finish-load', () => {
-    console.log('✅ BrowserView finished loading:', webView.webContents.getURL());
-    // Clear any existing timeout
-    if (loadingTimeout) {
-      clearTimeout(loadingTimeout);
-      loadingTimeout = null;
-    }
-    // Send URL update to renderer
-    mainWindow.webContents.send('url-updated', webView.webContents.getURL());
-    mainWindow.webContents.send('loading-finished');
-  });
-
-  webView.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-    console.error('❌ BrowserView failed to load:', errorDescription, 'Error Code:', errorCode, 'URL:', validatedURL);
-    // Clear any existing timeout
-    if (loadingTimeout) {
-      clearTimeout(loadingTimeout);
-      loadingTimeout = null;
-    }
-    
-    // Provide more specific error messages based on error codes
-    let userFriendlyMessage = errorDescription;
-    if (errorCode === -3) {
-      userFriendlyMessage = 'This page cannot be displayed due to security restrictions (X-Frame-Options or CSP)';
-    } else if (errorCode === -2) {
-      userFriendlyMessage = 'Network error - please check your internet connection';
-    } else if (errorCode === -1) {
-      userFriendlyMessage = 'Invalid URL or page not found';
-    }
-    
-    mainWindow.webContents.send('load-error', {
-      errorCode,
-      errorDescription: userFriendlyMessage,
-      url: validatedURL
-    });
-  });
-
-  webView.webContents.on('did-start-loading', () => {
-    console.log('🔄 BrowserView started loading');
-    mainWindow.webContents.send('loading-started');
-    
-    // Set a timeout to handle cases where loading never completes
-    if (loadingTimeout) {
-      clearTimeout(loadingTimeout);
-    }
-    loadingTimeout = setTimeout(() => {
-      console.warn('⚠️ Loading timeout reached');
-      mainWindow.webContents.send('load-error', {
-        errorCode: -999,
-        errorDescription: 'Page loading timed out. The site may be slow or unresponsive.',
-        url: webView.webContents.getURL()
-      });
-    }, LOADING_TIMEOUT_MS);
-  });
-
-  webView.webContents.on('page-title-updated', (event, title) => {
-    console.log('📄 BrowserView page title:', title);
-    mainWindow.webContents.send('title-updated', title);
-  });
-
-  // Handle navigation events
-  webView.webContents.on('will-navigate', (event, navigationUrl) => {
-    console.log('🧭 BrowserView will navigate to:', navigationUrl);
-    mainWindow.webContents.send('navigation-started', navigationUrl);
-  });
-
-  webView.webContents.on('did-navigate', (event, navigationUrl) => {
-    console.log('🧭 BrowserView navigated to:', navigationUrl);
-    mainWindow.webContents.send('navigation-completed', navigationUrl);
-  });
-
-  // Check if BrowserView is working
-  setTimeout(() => {
-    if (webView) {
-      console.log('🔍 BrowserView status check:');
-      console.log('- BrowserView exists:', !!webView);
-      console.log('- BrowserView URL:', webView.webContents.getURL());
-      console.log('- BrowserView loading:', webView.webContents.isLoading());
-    } else {
-      console.log('❌ BrowserView is null');
-    }
-  }, 2000);
+  // WebView tag is handled in the renderer process
+  console.log('🔧 Using WebView tag in renderer process for web content');
 
   // Handle window closed
   mainWindow.on('closed', () => {
-    // Clean up loading timeout
-    if (loadingTimeout) {
-      clearTimeout(loadingTimeout);
-      loadingTimeout = null;
-    }
     mainWindow = null;
-    webView = null;
   });
 };
 
 // App event handlers
 app.whenReady().then(() => {
+  // Initialize services on startup
+  initializeAIService();
+  initializeAutoUpdater();
+  
   createWindow();
   
   // Create application menu
@@ -467,11 +352,10 @@ ipcMain.handle('fresh-crawl', async (event, url: string) => {
     const pageContent = await previewService.page.content();
     const interactiveElements = await previewService.page.$$eval('button, a, input, select, textarea, [onclick], [role="button"]', elements => 
       elements.map((el, index) => ({
-        id: `element-${index}`,
+        id: el.id || `element-${index}`,
         tagName: el.tagName.toLowerCase(),
         text: el.textContent?.trim().substring(0, 50) || '',
         className: el.className,
-        id: el.id,
         selector: el.id ? `#${el.id}` : `.${el.className.split(' ')[0]}` || el.tagName.toLowerCase(),
         boundingRect: el.getBoundingClientRect()
       }))
