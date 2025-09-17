@@ -24,6 +24,7 @@ This index organizes all markdown documentation files in the TeenyAI project for
 
 ## Development & Best Practices
 - [Web Browser Development Best Practices](./Web%20Browser%20Development%20Best%20Practices.md) - Browser development guidelines
+- [TeenyAI Systematic Debugging Guide](./TeenyAI%20Systematic%20Debugging%20Guide.md) - Comprehensive debugging guide for common issues
 
 ## Bug Reports & Issues
 - [Known Issues](./KNOWN_ISSUES.md) - Documented known issues and workarounds

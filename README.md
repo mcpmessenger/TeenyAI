@@ -218,10 +218,27 @@ The AI features are now ready for real page analysis! Configure your OpenAI API 
    - Ask questions about the current webpage
    - Get step-by-step guidance for any website
 
+## 🔧 Debugging & Troubleshooting
+
+### Comprehensive Debugging Guide
+For detailed troubleshooting of common issues, see our **[TeenyAI Systematic Debugging Guide](TeenyAI%20Systematic%20Debugging%20Guide.md)** which covers:
+
+- **AI Assistant Issues**: Step-by-step debugging for non-functional AI features
+- **WebView Truncation**: Systematic approach to content rendering problems
+- **Environment Variables**: API key loading and validation issues
+- **Service Initialization**: Debugging `initializeAIService()` execution
+- **WebView Configuration**: Advanced troubleshooting for content display
+
+### Quick Troubleshooting
+- **AI Assistant not working?** Check the [AI Setup Guide](AI_SETUP_GUIDE.md)
+- **WebView content truncated?** See [Manual Help Request](MANUAL_HELP_REQUEST_WebView_Truncation.md)
+- **Need help?** Open a [GitHub Issue](https://github.com/mcpmessenger/TeenyAI/issues)
+
 ## 🐛 Known Issues
 
 - GPU process warnings on Windows (cosmetic only, doesn't affect functionality)
 - Some very restrictive websites may still have loading issues (rare)
+- **WebView Truncation**: Critical issue being investigated - see [GitHub Issue #3](https://github.com/mcpmessenger/TeenyAI/issues/3)
 
 ## 🤝 Contributing
 
