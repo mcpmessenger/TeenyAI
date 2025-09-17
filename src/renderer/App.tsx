@@ -188,25 +188,35 @@ const App: React.FC = () => {
                 try {
                   console.log('🔍 BEFORE FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
                   
-                  // SIMPLE fix - just reset the body and html styles
-                  document.documentElement.style.margin = '0';
-                  document.documentElement.style.padding = '0';
-                  document.documentElement.style.height = '100%';
-                  document.documentElement.style.overflow = 'visible';
+                  // AGGRESSIVE fix for YouTube and other sites
+                  document.documentElement.style.margin = '0 !important';
+                  document.documentElement.style.padding = '0 !important';
+                  document.documentElement.style.height = '100vh !important';
+                  document.documentElement.style.minHeight = '100vh !important';
+                  document.documentElement.style.overflow = 'visible !important';
                   
-                  document.body.style.margin = '0';
-                  document.body.style.padding = '0';
-                  document.body.style.height = '100%';
-                  document.body.style.overflow = 'visible';
-                  document.body.style.transform = 'none';
+                  document.body.style.margin = '0 !important';
+                  document.body.style.padding = '0 !important';
+                  document.body.style.height = '100vh !important';
+                  document.body.style.minHeight = '100vh !important';
+                  document.body.style.overflow = 'visible !important';
+                  document.body.style.transform = 'none !important';
+                  document.body.style.position = 'relative !important';
+                  document.body.style.top = '0 !important';
+                  document.body.style.left = '0 !important';
                   
-                  // Remove any negative positioning
-                  document.body.style.position = 'relative';
-                  document.body.style.top = '0';
-                  document.body.style.left = '0';
+                  // Force main content containers to full height
+                  const mainContainers = document.querySelectorAll('#primary, #contents, #page-manager, #content, .ytd-watch-flexy');
+                  mainContainers.forEach(container => {
+                    if (container) {
+                      container.style.height = '100vh !important';
+                      container.style.minHeight = '100vh !important';
+                      container.style.overflow = 'visible !important';
+                    }
+                  });
                   
                   console.log('🔍 AFTER FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
-                  console.log('✅ Applied simple external content fix');
+                  console.log('✅ Applied aggressive external content fix');
                 } catch (e) {
                   console.error('❌ Error in WebView script:', e);
                 }
