@@ -189,35 +189,38 @@ const App: React.FC = () => {
                   console.log('🔍 BEFORE FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
                   console.log('🔍 BEFORE FIX - Body computed styles:', window.getComputedStyle(document.body).height, window.getComputedStyle(document.body).overflow);
                   
-                  // METHOD 1: Direct style property setting (most reliable)
+                  // METHOD 1: Use the SAME approach as the working blue splash page
                   document.documentElement.style.setProperty('margin', '0', 'important');
                   document.documentElement.style.setProperty('padding', '0', 'important');
-                  document.documentElement.style.setProperty('height', '100vh', 'important');
-                  document.documentElement.style.setProperty('min-height', '100vh', 'important');
+                  document.documentElement.style.setProperty('height', '100%', 'important');
+                  document.documentElement.style.setProperty('width', '100%', 'important');
+                  document.documentElement.style.setProperty('position', 'fixed', 'important');
+                  document.documentElement.style.setProperty('top', '0', 'important');
+                  document.documentElement.style.setProperty('left', '0', 'important');
                   document.documentElement.style.setProperty('overflow', 'visible', 'important');
                   
                   document.body.style.setProperty('margin', '0', 'important');
                   document.body.style.setProperty('padding', '0', 'important');
-                  document.body.style.setProperty('height', '100vh', 'important');
-                  document.body.style.setProperty('min-height', '100vh', 'important');
-                  document.body.style.setProperty('overflow', 'visible', 'important');
-                  document.body.style.setProperty('transform', 'none', 'important');
-                  document.body.style.setProperty('position', 'relative', 'important');
+                  document.body.style.setProperty('height', '100%', 'important');
+                  document.body.style.setProperty('width', '100%', 'important');
+                  document.body.style.setProperty('position', 'fixed', 'important');
                   document.body.style.setProperty('top', '0', 'important');
                   document.body.style.setProperty('left', '0', 'important');
+                  document.body.style.setProperty('overflow', 'visible', 'important');
+                  document.body.style.setProperty('transform', 'none', 'important');
                   
-                  // METHOD 2: Inject CSS with higher specificity
+                  // METHOD 2: Inject CSS using the SAME approach as blue splash page
                   const style = document.createElement('style');
                   style.textContent = \`
                     html, body {
                       margin: 0 !important;
                       padding: 0 !important;
-                      height: 100vh !important;
-                      min-height: 100vh !important;
-                      overflow: visible !important;
-                      position: relative !important;
+                      height: 100% !important;
+                      width: 100% !important;
+                      position: fixed !important;
                       top: 0 !important;
                       left: 0 !important;
+                      overflow: visible !important;
                     }
                     * {
                       box-sizing: border-box !important;
@@ -260,16 +263,16 @@ const App: React.FC = () => {
         setTimeout(applyFix, 5000);
         setTimeout(applyFix, 10000);
 
-            // Also try setting WebView zoom and size directly
-            webview.setZoomFactor(1.0);
-            if (webview.setSize) {
-              const rect = webview.getBoundingClientRect();
-              webview.setSize({ width: rect.width, height: rect.height });
-            }
-          } catch (error) {
-            console.log('⚠️ Could not execute JavaScript in WebView:', error);
+        // Also try setting WebView zoom and size directly
+        try {
+          webview.setZoomFactor(1.0);
+          if (webview.setSize) {
+            const rect = webview.getBoundingClientRect();
+            webview.setSize({ width: rect.width, height: rect.height });
           }
-        }, 1000);
+        } catch (error) {
+          console.log('⚠️ Could not set WebView zoom/size:', error);
+        }
         
         // Additional gentle fix after 3 seconds
         setTimeout(() => {
