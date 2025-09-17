@@ -8,7 +8,8 @@
 **Component**: WebView Rendering Engine  
 **Affected Version**: All versions (persistent issue)  
 **Reported**: January 15, 2025  
-**Status**: 🚨 **ROOT CAUSE IDENTIFIED** - `electronAPI not available`  
+**Status**: 🆘 **MANUAL HELP REQUESTED** - GitHub Issue #3  
+**GitHub Issue**: https://github.com/mcpmessenger/TeenyAI/issues/3  
 
 ---
 

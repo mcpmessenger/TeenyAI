@@ -242,7 +242,9 @@ After implementing these fixes, the WebView should:
 
 ---
 
-**Status**: 🚨 **PERSISTENT** - WebView truncation issue remains unresolved despite multiple aggressive CSS and JavaScript solutions. External page CSS conflicts and aggressive override side effects are preventing resolution.
+**Status**: 🆘 **MANUAL HELP REQUESTED** - GitHub Issue #3  
+**GitHub Issue**: https://github.com/mcpmessenger/TeenyAI/issues/3  
+**Note**: WebView truncation issue remains unresolved despite multiple aggressive CSS and JavaScript solutions. External page CSS conflicts and aggressive override side effects are preventing resolution.
 
 **Last Updated**: January 15, 2025
 **Assigned To**: Development Team
