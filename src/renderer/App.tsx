@@ -179,44 +179,65 @@ const App: React.FC = () => {
           }
         }, 1000);
 
-        // SIMPLE external content override fix
-        setTimeout(() => {
+        // SYSTEMATIC external content override fix - Apply multiple times
+        const applyFix = () => {
           try {
             if (webview.executeJavaScript) {
               console.log('🔍 Attempting to execute JavaScript in WebView...');
               webview.executeJavaScript(`
                 try {
                   console.log('🔍 BEFORE FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
+                  console.log('🔍 BEFORE FIX - Body computed styles:', window.getComputedStyle(document.body).height, window.getComputedStyle(document.body).overflow);
                   
-                  // AGGRESSIVE fix for YouTube and other sites
-                  document.documentElement.style.margin = '0 !important';
-                  document.documentElement.style.padding = '0 !important';
-                  document.documentElement.style.height = '100vh !important';
-                  document.documentElement.style.minHeight = '100vh !important';
-                  document.documentElement.style.overflow = 'visible !important';
+                  // METHOD 1: Direct style property setting (most reliable)
+                  document.documentElement.style.setProperty('margin', '0', 'important');
+                  document.documentElement.style.setProperty('padding', '0', 'important');
+                  document.documentElement.style.setProperty('height', '100vh', 'important');
+                  document.documentElement.style.setProperty('min-height', '100vh', 'important');
+                  document.documentElement.style.setProperty('overflow', 'visible', 'important');
                   
-                  document.body.style.margin = '0 !important';
-                  document.body.style.padding = '0 !important';
-                  document.body.style.height = '100vh !important';
-                  document.body.style.minHeight = '100vh !important';
-                  document.body.style.overflow = 'visible !important';
-                  document.body.style.transform = 'none !important';
-                  document.body.style.position = 'relative !important';
-                  document.body.style.top = '0 !important';
-                  document.body.style.left = '0 !important';
+                  document.body.style.setProperty('margin', '0', 'important');
+                  document.body.style.setProperty('padding', '0', 'important');
+                  document.body.style.setProperty('height', '100vh', 'important');
+                  document.body.style.setProperty('min-height', '100vh', 'important');
+                  document.body.style.setProperty('overflow', 'visible', 'important');
+                  document.body.style.setProperty('transform', 'none', 'important');
+                  document.body.style.setProperty('position', 'relative', 'important');
+                  document.body.style.setProperty('top', '0', 'important');
+                  document.body.style.setProperty('left', '0', 'important');
                   
-                  // Force main content containers to full height
-                  const mainContainers = document.querySelectorAll('#primary, #contents, #page-manager, #content, .ytd-watch-flexy');
-                  mainContainers.forEach(container => {
-                    if (container) {
-                      container.style.height = '100vh !important';
-                      container.style.minHeight = '100vh !important';
-                      container.style.overflow = 'visible !important';
+                  // METHOD 2: Inject CSS with higher specificity
+                  const style = document.createElement('style');
+                  style.textContent = \`
+                    html, body {
+                      margin: 0 !important;
+                      padding: 0 !important;
+                      height: 100vh !important;
+                      min-height: 100vh !important;
+                      overflow: visible !important;
+                      position: relative !important;
+                      top: 0 !important;
+                      left: 0 !important;
+                    }
+                    * {
+                      box-sizing: border-box !important;
+                    }
+                  \`;
+                  document.head.appendChild(style);
+                  
+                  // METHOD 3: Force all containers to full height
+                  const allDivs = document.querySelectorAll('div');
+                  allDivs.forEach(div => {
+                    if (div.offsetHeight < window.innerHeight * 0.5) {
+                      div.style.setProperty('height', '100vh', 'important');
+                      div.style.setProperty('min-height', '100vh', 'important');
+                      div.style.setProperty('overflow', 'visible', 'important');
                     }
                   });
                   
                   console.log('🔍 AFTER FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
-                  console.log('✅ Applied aggressive external content fix');
+                  console.log('🔍 AFTER FIX - Body computed styles:', window.getComputedStyle(document.body).height, window.getComputedStyle(document.body).overflow);
+                  console.log('✅ Applied systematic external content fix');
                 } catch (e) {
                   console.error('❌ Error in WebView script:', e);
                 }
@@ -228,6 +249,16 @@ const App: React.FC = () => {
             } else {
               console.log('❌ WebView executeJavaScript method not available');
             }
+          } catch (error) {
+            console.error('❌ Error in applyFix:', error);
+          }
+        };
+
+        // Apply fix immediately and then every 2 seconds
+        applyFix();
+        setTimeout(applyFix, 2000);
+        setTimeout(applyFix, 5000);
+        setTimeout(applyFix, 10000);
 
             // Also try setting WebView zoom and size directly
             webview.setZoomFactor(1.0);
