@@ -55,6 +55,50 @@ Once set up, you should see:
 
 ## Troubleshooting
 
+### Critical: AI Service Initialization Failure
+
+If you see the "AI service is not available" message even after setting a valid API key, the core `initializeAIService()` function in the main Electron process might not be executing. This is a critical blocker.
+
+**How to Check:**
+1. **Open Electron Main Process Console:** When running `npm run dev`, open the developer tools for the main Electron window (usually `View > Toggle Developer Tools`). Look for the log `🚀 initializeAIService() called!`. If this message is absent, the function is not being invoked.
+2. **Verify `app.whenReady()`:** Ensure that the call to `initializeAIService()` is correctly placed within the `app.whenReady().then(() => { ... });` block in `src/main/main.ts`. This ensures the service initializes after Electron is ready.
+
+**Potential Fixes:**
+- **Review `src/main/main.ts`:** Confirm that `initializeAIService()` is explicitly called within `app.whenReady()`. If it's commented out or missing, re-add it.
+- **Debugging with Breakpoints:** Use a debugger (e.g., VS Code's Electron debugger) to set a breakpoint at the start of `initializeAIService()` to confirm if the execution flow reaches it.
+
+### Environment Variable Loading Issues
+
+Even if you've set your API key, the application might not be loading it correctly.
+
+**How to Check:**
+1. **Verify `.env` File Location:** The application expects the `.env` file in the project root. In `src/main/main.ts`, look for the `console.log` statement that shows `📁 .env file path: ...` and `📄 .env file exists: true/false`. Ensure it points to the correct location and reports `true`.
+2. **Inspect `process.env`:** Add temporary `console.log` statements in `src/main/main.ts` (inside `initializeAIService()`) to print the values of `process.env.OPENAI_API_KEY` (or other relevant keys) *after* `require('dotenv').config()`. This will confirm if the keys are being read into the application's environment.
+   ```typescript
+   // Temporary debug code in src/main/main.ts
+   console.log("DEBUG: OPENAI_API_KEY from process.env:", process.env.OPENAI_API_KEY ? "Loaded" : "Not Loaded");
+   ```
+
+**Potential Fixes:**
+- **Correct `.env` Path:** If the `.env` file path is incorrect, adjust the `path` argument in `require('dotenv').config({ path: ... });` to point to the absolute path of your `.env` file.
+- **Restart Electron:** Always ensure you fully restart the Electron application (not just the dev server) after making changes to `.env` files or system environment variables.
+
+### AI Provider Detection
+
+TeenyAI automatically detects the AI provider based on which API key is present (`OPENAI_API_KEY`, `CLAUDE_API_KEY`, `GEMINI_API_KEY`). If multiple are set, it prioritizes OpenAI.
+
+**To force a specific provider:**
+- Set the `AI_PROVIDER` environment variable in your `.env` file:
+  ```
+  AI_PROVIDER=claude
+  CLAUDE_API_KEY=your_claude_key_here
+  ```
+  (Replace `claude` with `openai` or `gemini` as needed).
+
+### WebView Display Issues
+
+If the AI Assistant panel appears but its content (or any web content) is severely truncated or misaligned, this is likely a WebView rendering issue, not an API key problem. Please refer to the `MANUAL_HELP_REQUEST_WebView_Truncation.md` for detailed troubleshooting steps on WebView content truncation.
+
 ### AI Assistant Not Responding
 - Check that your API key is valid and has sufficient credits
 - Verify the environment variable is set correctly
@@ -62,7 +106,7 @@ Once set up, you should see:
 - Check the console for error messages
 
 ### Common Issues
-- **"AI service is not available"**: API key not set or invalid
+- **"AI service is not available"**: API key not set or invalid, or `initializeAIService()` not executing
 - **"Rate limit exceeded"**: API key has reached usage limits
 - **"Insufficient credits"**: Add funds to your API account
 
