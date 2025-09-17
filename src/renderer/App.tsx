@@ -190,43 +190,23 @@ const App: React.FC = () => {
                   const bodyStyle = window.getComputedStyle(document.body);
                   console.log('🔍 BEFORE FIX - Body height:', bodyStyle.height, 'overflow:', bodyStyle.overflow);
                   
-                  // METHOD 1: Force viewport to fill available space
+                  // METHOD 1: Conservative viewport fix - just remove margins/padding
                   document.documentElement.style.setProperty('margin', '0', 'important');
                   document.documentElement.style.setProperty('padding', '0', 'important');
-                  document.documentElement.style.setProperty('height', '100vh', 'important');
-                  document.documentElement.style.setProperty('width', '100vw', 'important');
-                  document.documentElement.style.setProperty('min-height', '100vh', 'important');
                   document.documentElement.style.setProperty('overflow', 'visible', 'important');
                   
                   document.body.style.setProperty('margin', '0', 'important');
                   document.body.style.setProperty('padding', '0', 'important');
-                  document.body.style.setProperty('height', '100vh', 'important');
-                  document.body.style.setProperty('width', '100vw', 'important');
-                  document.body.style.setProperty('min-height', '100vh', 'important');
                   document.body.style.setProperty('overflow', 'visible', 'important');
                   document.body.style.setProperty('transform', 'none', 'important');
-                  document.body.style.setProperty('position', 'relative', 'important');
                   
-                  // METHOD 2: Inject aggressive CSS to force full height
+                  // METHOD 2: Minimal CSS injection - just basic cleanup
                   const style = document.createElement('style');
                   style.textContent = \`
                     html, body {
                       margin: 0 !important;
                       padding: 0 !important;
-                      height: 100vh !important;
-                      width: 100vw !important;
-                      min-height: 100vh !important;
                       overflow: visible !important;
-                      position: relative !important;
-                    }
-                    /* Force Google's main content to expand */
-                    #main, #searchform, #center_col, #cnt, #topstuff, #search, #rso, #rhs {
-                      min-height: 100vh !important;
-                      height: auto !important;
-                    }
-                    /* Force all main containers to full height */
-                    div[role="main"], div[jsname], div[data-ved] {
-                      min-height: 100vh !important;
                     }
                     * {
                       box-sizing: border-box !important;
@@ -234,31 +214,8 @@ const App: React.FC = () => {
                   \`;
                   document.head.appendChild(style);
                   
-                  // METHOD 3: Target Google's specific main content areas
-                  const mainContentSelectors = [
-                    '#main', '#searchform', '#center_col', '#cnt', '#topstuff', 
-                    '#search', '#rso', '#rhs', 'div[role="main"]', 
-                    'div[jsname]', 'div[data-ved]', '.g', '.rc'
-                  ];
-                  
-                  mainContentSelectors.forEach(selector => {
-                    const elements = document.querySelectorAll(selector);
-                    elements.forEach(el => {
-                      el.style.setProperty('min-height', '100vh', 'important');
-                      el.style.setProperty('height', 'auto', 'important');
-                      el.style.setProperty('overflow', 'visible', 'important');
-                    });
-                  });
-                  
-                  // METHOD 4: Force all divs that might be main content
-                  const allDivs = document.querySelectorAll('div');
-                  allDivs.forEach(div => {
-                    const rect = div.getBoundingClientRect();
-                    if (rect.height < window.innerHeight * 0.3 && rect.width > window.innerWidth * 0.5) {
-                      div.style.setProperty('min-height', '100vh', 'important');
-                      div.style.setProperty('height', 'auto', 'important');
-                    }
-                  });
+                  // METHOD 3: Very gentle approach - just ensure content is visible
+                  console.log('🔍 Applied minimal fix - just removed margins/padding');
                   
                   console.log('🔍 AFTER FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
                   const bodyStyleAfter = window.getComputedStyle(document.body);
