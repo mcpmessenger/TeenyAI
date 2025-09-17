@@ -187,40 +187,46 @@ const App: React.FC = () => {
               webview.executeJavaScript(`
                 try {
                   console.log('🔍 BEFORE FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
-                  console.log('🔍 BEFORE FIX - Body computed styles:', window.getComputedStyle(document.body).height, window.getComputedStyle(document.body).overflow);
+                  const bodyStyle = window.getComputedStyle(document.body);
+                  console.log('🔍 BEFORE FIX - Body height:', bodyStyle.height, 'overflow:', bodyStyle.overflow);
                   
-                  // METHOD 1: Use the SAME approach as the working blue splash page
+                  // METHOD 1: Force viewport to fill available space
                   document.documentElement.style.setProperty('margin', '0', 'important');
                   document.documentElement.style.setProperty('padding', '0', 'important');
-                  document.documentElement.style.setProperty('height', '100%', 'important');
-                  document.documentElement.style.setProperty('width', '100%', 'important');
-                  document.documentElement.style.setProperty('position', 'fixed', 'important');
-                  document.documentElement.style.setProperty('top', '0', 'important');
-                  document.documentElement.style.setProperty('left', '0', 'important');
+                  document.documentElement.style.setProperty('height', '100vh', 'important');
+                  document.documentElement.style.setProperty('width', '100vw', 'important');
+                  document.documentElement.style.setProperty('min-height', '100vh', 'important');
                   document.documentElement.style.setProperty('overflow', 'visible', 'important');
                   
                   document.body.style.setProperty('margin', '0', 'important');
                   document.body.style.setProperty('padding', '0', 'important');
-                  document.body.style.setProperty('height', '100%', 'important');
-                  document.body.style.setProperty('width', '100%', 'important');
-                  document.body.style.setProperty('position', 'fixed', 'important');
-                  document.body.style.setProperty('top', '0', 'important');
-                  document.body.style.setProperty('left', '0', 'important');
+                  document.body.style.setProperty('height', '100vh', 'important');
+                  document.body.style.setProperty('width', '100vw', 'important');
+                  document.body.style.setProperty('min-height', '100vh', 'important');
                   document.body.style.setProperty('overflow', 'visible', 'important');
                   document.body.style.setProperty('transform', 'none', 'important');
+                  document.body.style.setProperty('position', 'relative', 'important');
                   
-                  // METHOD 2: Inject CSS using the SAME approach as blue splash page
+                  // METHOD 2: Inject aggressive CSS to force full height
                   const style = document.createElement('style');
                   style.textContent = \`
                     html, body {
                       margin: 0 !important;
                       padding: 0 !important;
-                      height: 100% !important;
-                      width: 100% !important;
-                      position: fixed !important;
-                      top: 0 !important;
-                      left: 0 !important;
+                      height: 100vh !important;
+                      width: 100vw !important;
+                      min-height: 100vh !important;
                       overflow: visible !important;
+                      position: relative !important;
+                    }
+                    /* Force Google's main content to expand */
+                    #main, #searchform, #center_col, #cnt, #topstuff, #search, #rso, #rhs {
+                      min-height: 100vh !important;
+                      height: auto !important;
+                    }
+                    /* Force all main containers to full height */
+                    div[role="main"], div[jsname], div[data-ved] {
+                      min-height: 100vh !important;
                     }
                     * {
                       box-sizing: border-box !important;
@@ -228,18 +234,35 @@ const App: React.FC = () => {
                   \`;
                   document.head.appendChild(style);
                   
-                  // METHOD 3: Force all containers to full height
+                  // METHOD 3: Target Google's specific main content areas
+                  const mainContentSelectors = [
+                    '#main', '#searchform', '#center_col', '#cnt', '#topstuff', 
+                    '#search', '#rso', '#rhs', 'div[role="main"]', 
+                    'div[jsname]', 'div[data-ved]', '.g', '.rc'
+                  ];
+                  
+                  mainContentSelectors.forEach(selector => {
+                    const elements = document.querySelectorAll(selector);
+                    elements.forEach(el => {
+                      el.style.setProperty('min-height', '100vh', 'important');
+                      el.style.setProperty('height', 'auto', 'important');
+                      el.style.setProperty('overflow', 'visible', 'important');
+                    });
+                  });
+                  
+                  // METHOD 4: Force all divs that might be main content
                   const allDivs = document.querySelectorAll('div');
                   allDivs.forEach(div => {
-                    if (div.offsetHeight < window.innerHeight * 0.5) {
-                      div.style.setProperty('height', '100vh', 'important');
+                    const rect = div.getBoundingClientRect();
+                    if (rect.height < window.innerHeight * 0.3 && rect.width > window.innerWidth * 0.5) {
                       div.style.setProperty('min-height', '100vh', 'important');
-                      div.style.setProperty('overflow', 'visible', 'important');
+                      div.style.setProperty('height', 'auto', 'important');
                     }
                   });
                   
                   console.log('🔍 AFTER FIX - WebView internal viewport:', document.documentElement.clientWidth, 'x', document.documentElement.clientHeight);
-                  console.log('🔍 AFTER FIX - Body computed styles:', window.getComputedStyle(document.body).height, window.getComputedStyle(document.body).overflow);
+                  const bodyStyleAfter = window.getComputedStyle(document.body);
+                  console.log('🔍 AFTER FIX - Body height:', bodyStyleAfter.height, 'overflow:', bodyStyleAfter.overflow);
                   console.log('✅ Applied systematic external content fix');
                 } catch (e) {
                   console.error('❌ Error in WebView script:', e);
